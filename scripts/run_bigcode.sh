@@ -1,0 +1,13 @@
+python main.py \
+  --dataset_name bigcodebench \
+  --model openai/gpt-4o \
+  --model_api_file openai_key.txt \
+  --input_file bigcodebench-full-data.json \
+  --id_filtering_file id_filtering.json \
+  --log_prefix log \
+  --output_prefix buggy_code \
+  --rewrite \
+  --max_iter 5 \
+  --bug_per_time 3 \
+  --max_id_count 30 \
+  --temperature 0.7
