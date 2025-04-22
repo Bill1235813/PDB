@@ -31,7 +31,8 @@ def verify(dataset, verify_file):
             text=True
         )
         print(result.stdout)
-        with open(verify_file.replace(".jsonl, _eval_results.json"), "r") as f:
+        # Debug by Miaosen - Typo?
+        with open(verify_file.replace(".jsonl", "_eval_results.json"), "r") as f:
             log = json.load(f)
         log = log["eval"]
         fail_ids = []
