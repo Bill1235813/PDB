@@ -2,6 +2,21 @@ import os
 import json
 import subprocess
 
+"""
+This verify function is to evaluate the solution based on the dataset API
+
+Currently, it only supports bigcodebench.
+
+------------------------- bigcodebench ------------------------- 
+For bigcodebench, it uses the bigcodebench.evaluate API to evaluate the solution.
+The input file should be in the JSONL format of:
+{
+    "task_id": "123xxx",
+    "solution": "The solution to the task",
+}
+It returns a list of task_ids that failed and a list of task_ids that passed.
+"""
+
 
 def verify(dataset, verify_file):
     if dataset == "bigcodebench":
