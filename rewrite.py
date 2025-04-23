@@ -50,7 +50,7 @@ CODE_BLOCK_REGEX = re.compile(r"^\s*```python\s*\n?(.*?)\n?^\s*```\s*$", re.DOTA
 def rewrite(data, rewrite_model, dataset_name, log_file):
     results = []
 
-    for index, item in tqdm.tqdm(enumerate(data)):
+    for index, item in tqdm.tqdm(enumerate(data), total=len(data)):
         task_id = item.get("task_id")
         gt_solution = item.get("gt_solution")
         task_prompt = item.get("task_prompt")
@@ -90,13 +90,14 @@ def rewrite(data, rewrite_model, dataset_name, log_file):
         results.append(log_entry)
 
     # Verify
-    with open(log_file + "_verify.json", "w") as f:
+    verify_file = log_file + "_verify.jsonl"
+    with open(verify_file, "w") as f:
         f.write("\n".join([
             json.dumps({
                 "task_id": entry["task_id"],
                 "solution": entry["rewritten_solution"]
             }) for entry in results if entry["rewritten_solution"] is not None]))
-    fail_ids, correct_ids = verify(dataset_name, log_file + "_verify.json")
+    fail_ids, correct_ids = verify(dataset_name, verify_file)
 
     # Update results with success status
     new_data = []
