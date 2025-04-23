@@ -34,9 +34,15 @@ def gen_main(args):
     # Load the dataset
     raw_data = json.load(open(input_file, "r"))
     id_filtering = json.load(open(id_filtering_file, "r"))
-    raw_data = [d for d in raw_data if d["task_id"] in id_filtering]
+    
+    # Debug by Miaosen - Handle both list and dict
+    if isinstance(raw_data, dict):
+        raw_data = {k: v for k, v in raw_data.items() if k in id_filtering}
+    else: 
+        raw_data = [d for d in raw_data if d["task_id"] in id_filtering]
+        raw_data = {d["task_id"]: d for d in raw_data}
     if args.max_id_count > 0:
-        raw_data = raw_data[:args.max_id_count]
+        raw_data = dict(list(raw_data.items())[:args.max_id_count])
 
     # Preprocess the data
     print("Preprocessing data...")
