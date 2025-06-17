@@ -36,18 +36,31 @@ def gen_main(args):
     
     # Handle optional ID filtering file
     if os.path.exists(id_filtering_file):
-        id_filtering = json.load(open(id_filtering_file, "r"))
+        id_filtering = set(map(str, json.load(open(id_filtering_file, "r"))))
     else:
         id_filtering = None
 
-    # Debug by Miaosen - Handle both list and dict
-    if isinstance(raw_data, dict):
-        if id_filtering is not None:
-            raw_data = {k: v for k, v in raw_data.items() if k in id_filtering}
-    else:
-        if id_filtering is not None:
-            raw_data = [d for d in raw_data if d["task_id"] in id_filtering]
-        raw_data = {d["task_id"]: d for d in raw_data}
+    # Agnostic ID filtering
+    if isinstance(raw_data, list):
+        processed_dict = {}
+        for d in raw_data:
+            item_id = None
+            # TODO: Add more keys if Shangshang needs more. I don't know why we handle the filtering here.
+            if 'task_id' in d:
+                item_id = str(d['task_id'])
+            elif 'question_id' in d:
+                item_id = str(d['question_id'])
+
+            if item_id and (not id_filtering or item_id in id_filtering):
+                processed_dict[item_id] = d
+        raw_data = processed_dict
+
+    elif isinstance(raw_data, dict):
+        if id_filtering:
+            raw_data = {
+                str(k): v for k, v in raw_data.items() if str(k) in id_filtering
+            }
+
     if args.max_id_count > 0:
         raw_data = dict(list(raw_data.items())[:args.max_id_count])
 
