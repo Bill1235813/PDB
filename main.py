@@ -33,13 +33,20 @@ def gen_main(args):
 
     # Load the dataset
     raw_data = json.load(open(input_file, "r"))
-    id_filtering = json.load(open(id_filtering_file, "r"))
     
+    # Handle optional ID filtering file
+    if os.path.exists(id_filtering_file):
+        id_filtering = json.load(open(id_filtering_file, "r"))
+    else:
+        id_filtering = None
+
     # Debug by Miaosen - Handle both list and dict
     if isinstance(raw_data, dict):
-        raw_data = {k: v for k, v in raw_data.items() if k in id_filtering}
-    else: 
-        raw_data = [d for d in raw_data if d["task_id"] in id_filtering]
+        if id_filtering is not None:
+            raw_data = {k: v for k, v in raw_data.items() if k in id_filtering}
+    else:
+        if id_filtering is not None:
+            raw_data = [d for d in raw_data if d["task_id"] in id_filtering]
         raw_data = {d["task_id"]: d for d in raw_data}
     if args.max_id_count > 0:
         raw_data = dict(list(raw_data.items())[:args.max_id_count])
@@ -61,8 +68,13 @@ def gen_main(args):
     valid_buggy_code = []
     for i in range(args.max_iter):
         print(f"Generating buggy code, iteration {i + 1}...")
-        buggy_code, remain_data = bug_generate_correct(remain_data, generator, args.bug_per_time,
-                                                       log_file_prefix + "bug_iter" + str(i + 1))
+        buggy_code, remain_data = bug_generate_correct(
+            remain_data,
+            generator,
+            args.bug_per_time,
+            log_file_prefix + "bug_iter" + str(i + 1),
+            args.dataset_name,
+        )
         valid_buggy_code.extend(buggy_code)
 
     print("Total buggy code generated: ", len(valid_buggy_code))
