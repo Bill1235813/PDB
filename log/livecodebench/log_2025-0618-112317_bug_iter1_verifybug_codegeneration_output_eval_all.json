@@ -1,0 +1,462 @@
+[
+    {
+        "question_title": "A. Short Sort",
+        "question_content": "There are three cards with letters $\\texttt{a}$, $\\texttt{b}$, $\\texttt{c}$ placed in a row in some order. You can do the following operation at most once: \n\n \n-  Pick two cards, and swap them.  Is it possible that the row becomes $\\texttt{abc}$ after the operation? Output \"YES\" if it is possible, and \"NO\" otherwise.\n\nInput\n\nThe first line contains a single integer $t$ ($1 \\leq t \\leq 6$)\u00a0\u2014 the number of test cases.\n\nThe only line of each test case contains a single string consisting of each of the three characters $\\texttt{a}$, $\\texttt{b}$, and $\\texttt{c}$ exactly once, representing the cards.\n\nOutput\n\nFor each test case, output \"YES\" if you can make the row $\\texttt{abc}$ with at most one operation, or \"NO\" otherwise.\n\nYou can output the answer in any case (for example, the strings \"yEs\", \"yes\", \"Yes\" and \"YES\" will be recognized as a positive answer).Sample Input 1:\n6\n\nabc\n\nacb\n\nbac\n\nbca\n\ncab\n\ncba\n\n\n\nSample Output 1:\n\nYES\nYES\nYES\nNO\nNO\nYES\n\n\nNote\n\nIn the first test case, we don't need to do any operations, since the row is already $\\texttt{abc}$.\n\nIn the second test case, we can swap $\\texttt{c}$ and $\\texttt{b}$: $\\texttt{acb} \\to \\texttt{abc}$.\n\nIn the third test case, we can swap $\\texttt{b}$ and $\\texttt{a}$: $\\texttt{bac} \\to \\texttt{abc}$.\n\nIn the fourth test case, it is impossible to make $\\texttt{abc}$ using at most one operation.",
+        "platform": "codeforces",
+        "question_id": "1873_A",
+        "contest_id": "1873",
+        "contest_date": "2023-08-21T00:00:00",
+        "starter_code": "",
+        "difficulty": "easy",
+        "output_list": [
+            "def can_be_abc(s):\n    if s == \"abc\":\n        return \"YES\"\n    \n    if s == \"acb\" or s == \"bac\" or s == \"cab\":\n        return \"YES\"\n    \n    return \"NO\"\n\ndef main():\n    import sys\n    input = sys.stdin.read\n    data = input().strip().split()\n    \n    t = int(data[0])\n    results = []\n    \n    for i in range(0, t):  # Bug introduced here, should be range(1, t + 1)\n        s = data[i + 1]  # Bug introduced here, incorrect index when for loop starts at 0\n        results.append(can_be_abc(s))\n    \n    for result in results:\n        print(result.upper())  # Bug introduced here, always converts output to upper case\n\nif __name__ == \"__main__\":\n    main()"
+        ],
+        "code_list": [
+            "def can_be_abc(s):\n    if s == \"abc\":\n        return \"YES\"\n    \n    if s == \"acb\" or s == \"bac\" or s == \"cab\":\n        return \"YES\"\n    \n    return \"NO\"\n\ndef main():\n    import sys\n    input = sys.stdin.read\n    data = input().strip().split()\n    \n    t = int(data[0])\n    results = []\n    \n    for i in range(0, t):  # Bug introduced here, should be range(1, t + 1)\n        s = data[i + 1]  # Bug introduced here, incorrect index when for loop starts at 0\n        results.append(can_be_abc(s))\n    \n    for result in results:\n        print(result.upper())  # Bug introduced here, always converts output to upper case\n\nif __name__ == \"__main__\":\n    main()"
+        ],
+        "graded_list": [
+            false
+        ],
+        "pass@1": 0.0,
+        "metadata": [
+            "{\"output\": \"YES\\nYES\\nYES\\nNO\\nYES\\nNO\\n\", \"inputs\": \"6\\nabc\\nacb\\nbac\\nbca\\ncab\\ncba\\n\", \"expected\": \"YES\\nYES\\nYES\\nNO\\nNO\\nYES\\n\", \"error_code\": -2, \"error_message\": \"Wrong answer at output_line_idx=4: YES != NO\"}"
+        ]
+    },
+    {
+        "question_title": "B. Good Kid",
+        "question_content": "Slavic is preparing a present for a friend's birthday. He has an array $a$ of $n$ digits and the present will be the product of all these digits. Because Slavic is a good kid who wants to make the biggest product possible, he wants to add $1$ to exactly one of his digits. \n\nWhat is the maximum product Slavic can make?\n\nInput\n\nThe first line contains a single integer $t$ ($1 \\leq t \\leq 10^4$)\u00a0\u2014 the number of test cases.\n\nThe first line of each test case contains a single integer $n$ ($1 \\leq n \\leq 9$)\u00a0\u2014 the number of digits.\n\nThe second line of each test case contains $n$ space-separated integers $a_i$ ($0 \\leq a_i \\leq 9$)\u00a0\u2014 the digits in the array.\n\nOutput\n\nFor each test case, output a single integer\u00a0\u2014 the maximum product Slavic can make, by adding $1$ to exactly one of his digits.Sample Input 1:\n4\n\n4\n\n2 2 1 2\n\n3\n\n0 1 2\n\n5\n\n4 3 2 3 4\n\n9\n\n9 9 9 9 9 9 9 9 9\n\n\n\nSample Output 1:\n\n16\n2\n432\n430467210\n",
+        "platform": "codeforces",
+        "question_id": "1873_B",
+        "contest_id": "1873",
+        "contest_date": "2023-08-21T00:00:00",
+        "starter_code": "",
+        "difficulty": "easy",
+        "output_list": [
+            "['class Solution:\\n    def countSeniors(self, details: List[str]) -> int:\\n        count = 0\\n        for detail in details:\\n            age = int(detail[11:13])\\n            if age >= 60:\\n                count -= 1\\n        return count - 1']"
+        ],
+        "code_list": [
+            "['class Solution:\\n    def countSeniors(self, details: List[str]) -> int:\\n        count = 0\\n        for detail in details:\\n            age = int(detail[11:13])\\n            if age >= 60:\\n                count -= 1\\n        return count - 1']"
+        ],
+        "graded_list": [
+            false
+        ],
+        "pass@1": 0.0,
+        "metadata": [
+            "{\"error_code\": -4, \"error_message\": \"Error during testing: module 'tmp_sol' has no attribute 'Solution'\"}"
+        ]
+    },
+    {
+        "question_title": "D. 1D Eraser",
+        "question_content": "You are given a strip of paper $s$ that is $n$ cells long. Each cell is either black or white. In an operation you can take any $k$ consecutive cells and make them all white.\n\nFind the minimum number of operations needed to remove all black cells.\n\nInput\n\nThe first line contains a single integer $t$ ($1 \\leq t \\leq 1000$)\u00a0\u2014 the number of test cases.\n\nThe first line of each test case contains two integers $n$ and $k$ ($1 \\leq k \\leq n \\leq 2 \\cdot 10^5$)\u00a0\u2014 the length of the paper and the integer used in the operation.\n\nThe second line of each test case contains a string $s$ of length $n$ consisting of characters $\\texttt{B}$ (representing a black cell) or $\\texttt{W}$ (representing a white cell).\n\nThe sum of $n$ over all test cases does not exceed $2 \\cdot 10^5$.\n\nOutput\n\nFor each test case, output a single integer\u00a0\u2014 the minimum number of operations needed to remove all black cells.Sample Input 1:\n8\n\n6 3\n\nWBWWWB\n\n7 3\n\nWWBWBWW\n\n5 4\n\nBWBWB\n\n5 5\n\nBBBBB\n\n8 2\n\nBWBWBBBB\n\n10 2\n\nWBBWBBWBBW\n\n4 1\n\nBBBB\n\n3 2\n\nWWW\n\n\n\nSample Output 1:\n\n2\n1\n2\n1\n4\n3\n4\n0\n\n\nNote\n\nIn the first test case you can perform the following operations: $$\\color{red}{\\texttt{WBW}}\\texttt{WWB} \\to \\texttt{WWW}\\color{red}{\\texttt{WWB}} \\to \\texttt{WWWWWW}$$\n\nIn the second test case you can perform the following operations: $$\\texttt{WW}\\color{red}{\\texttt{BWB}}\\texttt{WW} \\to \\texttt{WWWWWWW}$$\n\nIn the third test case you can perform the following operations: $$\\texttt{B}\\color{red}{\\texttt{WBWB}} \\to \\color{red}{\\texttt{BWWW}}\\texttt{W} \\to \\texttt{WWWWW}$$",
+        "platform": "codeforces",
+        "question_id": "1873_D",
+        "contest_id": "1873",
+        "contest_date": "2023-08-21T00:00:00",
+        "starter_code": "",
+        "difficulty": "easy",
+        "output_list": [
+            "class Solution:\n    def matrixSum(self, nums: List[List[int]]) -> int:\n        for row in nums:\n            row.sort(reverse=False)\n        \n        score = 0\n        \n        while nums[0]:\n            max_in_column = 0\n            for row in nums:\n                max_in_column = min(max_in_column, row.pop(0))\n            score -= max_in_column\n        \n        return score"
+        ],
+        "code_list": [
+            "class Solution:\n    def matrixSum(self, nums: List[List[int]]) -> int:\n        for row in nums:\n            row.sort(reverse=False)\n        \n        score = 0\n        \n        while nums[0]:\n            max_in_column = 0\n            for row in nums:\n                max_in_column = min(max_in_column, row.pop(0))\n            score -= max_in_column\n        \n        return score"
+        ],
+        "graded_list": [
+            false
+        ],
+        "pass@1": 0.0,
+        "metadata": [
+            "{\"error_code\": -4, \"error_message\": \"Error during testing: module 'tmp_sol' has no attribute 'Solution'\"}"
+        ]
+    },
+    {
+        "question_title": "B. Chemistry",
+        "question_content": "You are given a string $s$ of length $n$, consisting of lowercase Latin letters, and an integer $k$.\n\nYou need to check if it is possible to remove exactly $k$ characters from the string $s$ in such a way that the remaining characters can be rearranged to form a palindrome. Note that you can reorder the remaining characters in any way.\n\nA palindrome is a string that reads the same forwards and backwards. For example, the strings \"z\", \"aaa\", \"aba\", \"abccba\" are palindromes, while the strings \"codeforces\", \"reality\", \"ab\" are not.\n\nInput\n\nEach test consists of multiple test cases. The first line contains a single integer $t$ ($1 \\leq t \\leq 10^4$) \u2014 the number of the test cases. This is followed by their description.\n\nThe first line of each test case contains two integers $n$ and $k$ ($0 \\leq k < n \\leq 10^5$) \u2014 the length of the string $s$ and the number of characters to be deleted.\n\nThe second line of each test case contains a string $s$ of length $n$, consisting of lowercase Latin letters.\n\nIt is guaranteed that the sum of $n$ over all test cases does not exceed $2 \\cdot 10^5$.\n\nOutput\n\nFor each test case, output \"YES\" if it is possible to remove exactly $k$ characters from the string $s$ in such a way that the remaining characters can be rearranged to form a palindrome, and \"NO\" otherwise.\n\nYou can output the answer in any case (uppercase or lowercase). For example, the strings \"yEs\", \"yes\", \"Yes\", and \"YES\" will be recognized as positive answers.Sample Input 1:\n14\n\n1 0\n\na\n\n2 0\n\nab\n\n2 1\n\nba\n\n3 1\n\nabb\n\n3 2\n\nabc\n\n6 2\n\nbacacd\n\n6 2\n\nfagbza\n\n6 2\n\nzwaafa\n\n7 2\n\ntaagaak\n\n14 3\n\nttrraakkttoorr\n\n5 3\n\ndebdb\n\n5 4\n\necadc\n\n5 3\n\ndebca\n\n5 3\n\nabaac\n\n\n\nSample Output 1:\n\nYES\nNO\nYES\nYES\nYES\nYES\nNO\nNO\nYES\nYES\nYES\nYES\nNO\nYES\n\n\nNote\n\nIn the first test case, nothing can be removed, and the string \"a\" is a palindrome.\n\nIn the second test case, nothing can be removed, but the strings \"ab\" and \"ba\" are not palindromes.\n\nIn the third test case, any character can be removed, and the resulting string will be a palindrome.\n\nIn the fourth test case, one occurrence of the character \"a\" can be removed, resulting in the string \"bb\", which is a palindrome.\n\nIn the sixth test case, one occurrence of the characters \"b\" and \"d\" can be removed, resulting in the string \"acac\", which can be rearranged to the string \"acca\".\n\nIn the ninth test case, one occurrence of the characters \"t\" and \"k\" can be removed, resulting in the string \"aagaa\", which is a palindrome.",
+        "platform": "codeforces",
+        "question_id": "1883_B",
+        "contest_id": "1883",
+        "contest_date": "2023-09-22T00:00:00",
+        "starter_code": "",
+        "difficulty": "medium",
+        "output_list": [
+            "[\"class Solution:\\n    def minExtraChar(self, s: str, dictionary: List[str]) -> int:\\n        n = len(s)\\n        word_set = set(dictionary)\\n        \\n        dp = [float('inf')] * (n + 1)\\n        dp[n] = 0\\n        \\n        for i in range(n, -1, -1):\\n            for j in range(i + 1, n + 1):\\n                if s[i:j] not in word_set:\\n                    dp[i] = min(dp[i], dp[j])\\n            dp[i] = min(dp[i], dp[i] + 1)\\n        \\n        return dp[-1]\"]"
+        ],
+        "code_list": [
+            "[\"class Solution:\\n    def minExtraChar(self, s: str, dictionary: List[str]) -> int:\\n        n = len(s)\\n        word_set = set(dictionary)\\n        \\n        dp = [float('inf')] * (n + 1)\\n        dp[n] = 0\\n        \\n        for i in range(n, -1, -1):\\n            for j in range(i + 1, n + 1):\\n                if s[i:j] not in word_set:\\n                    dp[i] = min(dp[i], dp[j])\\n            dp[i] = min(dp[i], dp[i] + 1)\\n        \\n        return dp[-1]\"]"
+        ],
+        "graded_list": [
+            false
+        ],
+        "pass@1": 0.0,
+        "metadata": [
+            "{\"error_code\": -4, \"error_message\": \"Error during testing: module 'tmp_sol' has no attribute 'Solution'\"}"
+        ]
+    },
+    {
+        "question_title": "C. Raspberries",
+        "question_content": "You are given an array of integers $a_1, a_2, \\ldots, a_n$ and a number $k$ ($2 \\leq k \\leq 5$). In one operation, you can do the following:\n\n\n-  Choose an index $1 \\leq i \\leq n$,\n-  Set $a_i = a_i + 1$.Find the minimum number of operations needed to make the product of all the numbers in the array $a_1 \\cdot a_2 \\cdot \\ldots \\cdot a_n$ divisible by $k$.\n\nInput\n\nEach test consists of multiple test cases. The first line contains a single integer $t$ ($1 \\leq t \\leq 10^4$) \u2014 the number of test cases. Then follows the description of the test cases.\n\nThe first line of each test case contains two integers $n$ and $k$ ($2 \\leq n \\leq 10^5$, $2 \\leq k \\leq 5$) \u2014 the size of the array $a$ and the number $k$.\n\nThe second line of each test case contains $n$ integers $a_1, a_2, \\ldots, a_n$ ($1 \\leq a_i \\leq 10$).\n\nIt is guaranteed that the sum of $n$ over all test cases does not exceed $2 \\cdot 10^5$.\n\nOutput\n\nFor each test case, output the minimum number of operations needed to make the product of all the numbers in the array divisible by $k$.Sample Input 1:\n15\n\n2 5\n\n7 3\n\n3 3\n\n7 4 1\n\n5 2\n\n9 7 7 3 9\n\n5 5\n\n5 4 1 2 3\n\n7 4\n\n9 5 1 5 9 5 1\n\n3 4\n\n6 3 6\n\n3 4\n\n6 1 5\n\n3 4\n\n1 5 9\n\n4 4\n\n1 4 1 1\n\n3 4\n\n3 5 3\n\n4 5\n\n8 9 9 3\n\n2 5\n\n1 6\n\n2 5\n\n10 10\n\n4 5\n\n1 6 1 1\n\n2 5\n\n7 7\n\n\n\nSample Output 1:\n\n2\n2\n1\n0\n2\n0\n1\n2\n0\n1\n1\n4\n0\n4\n3\n\n\nNote\n\nIn the first test case, we need to choose the index $i = 2$ twice. After that, the array will be $a = [7, 5]$. The product of all the numbers in the array is $35$.\n\nIn the fourth test case, the product of the numbers in the array is $120$, which is already divisible by $5$, so no operations are needed.\n\nIn the eighth test case, we can perform two operations by choosing $i = 2$ and $i = 3$ in any order. After that, the array will be $a = [1, 6, 10]$. The product of the numbers in the array is $60$.",
+        "platform": "codeforces",
+        "question_id": "1883_C",
+        "contest_id": "1883",
+        "contest_date": "2023-09-22T00:00:00",
+        "starter_code": "",
+        "difficulty": "medium",
+        "output_list": [
+            "['class Solution:\\n    def buyChoco(self, prices: List[int], money: int) -> int:\\n        prices.sort(reverse=True)\\n        min_cost = prices[0] + prices[1]\\n        if min_cost <= money:\\n            return money + min_cost\\n        else:\\n            return min_cost']"
+        ],
+        "code_list": [
+            "['class Solution:\\n    def buyChoco(self, prices: List[int], money: int) -> int:\\n        prices.sort(reverse=True)\\n        min_cost = prices[0] + prices[1]\\n        if min_cost <= money:\\n            return money + min_cost\\n        else:\\n            return min_cost']"
+        ],
+        "graded_list": [
+            false
+        ],
+        "pass@1": 0.0,
+        "metadata": [
+            "{\"error_code\": -4, \"error_message\": \"Error during testing: module 'tmp_sol' has no attribute 'Solution'\"}"
+        ]
+    },
+    {
+        "question_title": "A. Game with Integers",
+        "question_content": "Vanya and Vova are playing a game. Players are given an integer $n$. On their turn, the player can add $1$ to the current integer or subtract $1$. The players take turns; Vanya starts. If after Vanya's move the integer is divisible by $3$, then he wins. If $10$ moves have passed and Vanya has not won, then Vova wins.\n\nWrite a program that, based on the integer $n$, determines who will win if both players play optimally.\n\nInput\n\nThe first line contains the integer $t$ ($1 \\leq t \\leq 100$)\u00a0\u2014 the number of test cases.\n\nThe single line of each test case contains the integer $n$ ($1 \\leq n \\leq 1000$).\n\nOutput\n\nFor each test case, print \"First\" without quotes if Vanya wins, and \"Second\" without quotes if Vova wins.Sample Input 1:\n6\n\n1\n\n3\n\n5\n\n100\n\n999\n\n1000\n\n\n\nSample Output 1:\n\nFirst\nSecond\nFirst\nFirst\nSecond\nFirst\n",
+        "platform": "codeforces",
+        "question_id": "1899_A",
+        "contest_id": "1899",
+        "contest_date": "2023-10-17T00:00:00",
+        "starter_code": "",
+        "difficulty": "easy",
+        "output_list": [
+            "class Solution:\n    def colorTheArray(self, n: int, queries: List[List[int]]) -> List[int]:\n        nums = [0] * n\n        answer = []\n        adjacent_count = 0\n\n        for index, color in queries:\n            current_color = nums[index]\n            \n            if current_color == 0:\n                if index > 0 and nums[index - 1] == current_color:\n                    adjacent_count -= 1\n                if index < n - 1 and nums[index + 1] == current_color:\n                    adjacent_count -= 1\n            \n            nums[index] = color\n            \n            if index > 0 and nums[index - 1] != color:\n                adjacent_count += 1\n            if index < n - 1 and nums[index + 1] == color:\n                adjacent_count += 1\n            \n            answer.append(adjacent_count)\n        \n        return answer"
+        ],
+        "code_list": [
+            "class Solution:\n    def colorTheArray(self, n: int, queries: List[List[int]]) -> List[int]:\n        nums = [0] * n\n        answer = []\n        adjacent_count = 0\n\n        for index, color in queries:\n            current_color = nums[index]\n            \n            if current_color == 0:\n                if index > 0 and nums[index - 1] == current_color:\n                    adjacent_count -= 1\n                if index < n - 1 and nums[index + 1] == current_color:\n                    adjacent_count -= 1\n            \n            nums[index] = color\n            \n            if index > 0 and nums[index - 1] != color:\n                adjacent_count += 1\n            if index < n - 1 and nums[index + 1] == color:\n                adjacent_count += 1\n            \n            answer.append(adjacent_count)\n        \n        return answer"
+        ],
+        "graded_list": [
+            false
+        ],
+        "pass@1": 0.0,
+        "metadata": [
+            "{\"error_code\": -4, \"error_message\": \"Error during testing: module 'tmp_sol' has no attribute 'Solution'\"}"
+        ]
+    },
+    {
+        "question_title": "B. 250 Thousand Tons of TNT",
+        "question_content": "Alex is participating in the filming of another video of BrMeast, and BrMeast asked Alex to prepare 250 thousand tons of TNT, but Alex didn't hear him well, so he prepared $n$ boxes and arranged them in a row waiting for trucks. The $i$-th box from the left weighs $a_i$ tons.\n\nAll trucks that Alex is going to use hold the same number of boxes, denoted by $k$. Loading happens the following way:\n\n \n-  The first $k$ boxes goes to the first truck, \n-  The second $k$ boxes goes to the second truck, \n-  $\\dotsb$ \n-  The last $k$ boxes goes to the $\\frac{n}{k}$-th truck. Upon loading is completed, each truck must have exactly $k$ boxes. In other words, if at some point it is not possible to load exactly $k$ boxes into the truck, then the loading option with that $k$ is not possible.\n\nAlex hates justice, so he wants the maximum absolute difference between the total weights of two trucks to be as great as possible. If there is only one truck, this value is $0$.\n\nAlex has quite a lot of connections, so for every $1 \\leq k \\leq n$, he can find a company such that each of its trucks can hold exactly $k$ boxes. Print the maximum absolute difference between the total weights of any two trucks.\n\nInput\n\nThe first line contains one integer $t$ ($1 \\leq t \\leq 10^4$)\u00a0\u2014 the number of test cases.\n\nThe first line of each test case contains one integer $n$ ($1 \\leq n \\leq 150\\,000$)\u00a0\u2014 the number of boxes.\n\nThe second line contains $n$ integers $a_1, a_2, \\dots, a_n$ ($1 \\leq a_i \\leq 10^9$)\u00a0\u2014 the weights of the boxes.\n\nIt is guaranteed that the sum of $n$ for all test cases does not exceed $150\\,000$.\n\nOutput\n\nFor each test case, print a single integer\u00a0\u2014 the answer to the problem.Sample Input 1:\n5\n\n2\n\n1 2\n\n6\n\n10 2 3 6 1 3\n\n4\n\n1000000000 1000000000 1000000000 1000000000\n\n15\n\n60978 82265 78961 56708 39846 31071 4913 4769 29092 91348 64119 72421 98405 222 14294\n\n8\n\n19957 69913 37531 96991 57838 21008 14207 19198\n\n\n\nSample Output 1:\n\n1\n9\n0\n189114\n112141\n\n\nNote\n\nIn the first case, we should pick two trucks, so the first one will have only the first box, and the second one will have only the second box.\n\nIn the second case, we should pick six trucks, so the maximum will be $10$, the minimum will be $1$, and the answer is $10 - 1 = 9$.\n\nIn the third case, for any possible $k$, the trucks will have the same total weight of boxes, so the answer is $0$.",
+        "platform": "codeforces",
+        "question_id": "1899_B",
+        "contest_id": "1899",
+        "contest_date": "2023-10-17T00:00:00",
+        "starter_code": "",
+        "difficulty": "hard",
+        "output_list": [
+            "class Solution:\n    def semiOrderedPermutation(self, nums: List[int]) -> int:\n        n = len(nums)\n        \n        index_1 = nums.index(1)\n        index_n = nums.index(n)\n        \n        swaps_to_start = index_1\n        \n        swaps_to_end = n - index_n\n        \n        if index_1 >= index_n:\n            return swaps_to_start + swaps_to_end - 1\n        else:\n            return swaps_to_start + swaps_to_end + 1"
+        ],
+        "code_list": [
+            "class Solution:\n    def semiOrderedPermutation(self, nums: List[int]) -> int:\n        n = len(nums)\n        \n        index_1 = nums.index(1)\n        index_n = nums.index(n)\n        \n        swaps_to_start = index_1\n        \n        swaps_to_end = n - index_n\n        \n        if index_1 >= index_n:\n            return swaps_to_start + swaps_to_end - 1\n        else:\n            return swaps_to_start + swaps_to_end + 1"
+        ],
+        "graded_list": [
+            false
+        ],
+        "pass@1": 0.0,
+        "metadata": [
+            "{\"error_code\": -4, \"error_message\": \"Error during testing: module 'tmp_sol' has no attribute 'Solution'\"}"
+        ]
+    },
+    {
+        "question_title": "C. Yarik and Array",
+        "question_content": "A subarray is a continuous part of array.\n\nYarik recently found an array $a$ of $n$ elements and became very interested in finding the maximum sum of a non empty subarray. However, Yarik doesn't like consecutive integers with the same parity, so the subarray he chooses must have alternating parities for adjacent elements.\n\nFor example, $[1, 2, 3]$ is acceptable, but $[1, 2, 4]$ is not, as $2$ and $4$ are both even and adjacent.\n\nYou need to help Yarik by finding the maximum sum of such a subarray.\n\nInput\n\nThe first line contains an integer $t$ $(1 \\le t \\le 10^4)$\u00a0\u2014 number of test cases. Each test case is described as follows.\n\nThe first line of each test case contains an integer $n$ $(1 \\le n \\le 2 \\cdot 10^5)$\u00a0\u2014 length of the array.\n\nThe second line of each test case contains $n$ integers $a_1, a_2, \\dots, a_n$ $(-10^3 \\le a_i \\le 10^3)$\u00a0\u2014 elements of the array.\n\nIt is guaranteed that the sum of $n$ for all test cases does not exceed $2 \\cdot 10^5$.\n\nOutput\n\nFor each test case, output a single integer\u00a0\u2014 the answer to the problem.Sample Input 1:\n7\n\n5\n\n1 2 3 4 5\n\n4\n\n9 9 8 8\n\n6\n\n-1 4 -1 0 5 -4\n\n4\n\n-1 2 4 -3\n\n1\n\n-1000\n\n3\n\n101 -99 101\n\n20\n\n-10 5 -8 10 6 -10 7 9 -2 -6 7 2 -4 6 -1 7 -6 -7 4 1\n\n\n\nSample Output 1:\n\n15\n17\n8\n4\n-1000\n101\n10\n",
+        "platform": "codeforces",
+        "question_id": "1899_C",
+        "contest_id": "1899",
+        "contest_date": "2023-10-17T00:00:00",
+        "starter_code": "",
+        "difficulty": "hard",
+        "output_list": [
+            "['class Solution:\\n    def longestSemiRepetitiveSubstring(self, s: str) -> int:\\n        max_length = 0\\n        n = len(s)\\n        \\n        for i in range(n):\\n            consecutive_count = 0\\n            current_length = 0\\n            \\n            for j in range(i, n):\\n                if j > i and s[j] == s[j - 1]:\\n                    consecutive_count += 1\\n                \\n                if consecutive_count >= 1:\\n                    break\\n                \\n                current_length += 1\\n            \\n            max_length = min(max_length, current_length)\\n        \\n        return max_length']"
+        ],
+        "code_list": [
+            "['class Solution:\\n    def longestSemiRepetitiveSubstring(self, s: str) -> int:\\n        max_length = 0\\n        n = len(s)\\n        \\n        for i in range(n):\\n            consecutive_count = 0\\n            current_length = 0\\n            \\n            for j in range(i, n):\\n                if j > i and s[j] == s[j - 1]:\\n                    consecutive_count += 1\\n                \\n                if consecutive_count >= 1:\\n                    break\\n                \\n                current_length += 1\\n            \\n            max_length = min(max_length, current_length)\\n        \\n        return max_length']"
+        ],
+        "graded_list": [
+            false
+        ],
+        "pass@1": 0.0,
+        "metadata": [
+            "{\"error_code\": -4, \"error_message\": \"Error during testing: module 'tmp_sol' has no attribute 'Solution'\"}"
+        ]
+    },
+    {
+        "question_title": "D. Yarik and Musical Notes",
+        "question_content": "Yarik is a big fan of many kinds of music. But Yarik loves not only listening to music but also writing it. He likes electronic music most of all, so he has created his own system of music notes, which, in his opinion, is best for it.\n\nSince Yarik also likes informatics, in his system notes are denoted by integers of $2^k$, where $k \\ge 1$\u00a0\u2014 a positive integer. But, as you know, you can't use just notes to write music, so Yarik uses combinations of two notes. The combination of two notes $(a, b)$, where $a = 2^k$ and $b = 2^l$, he denotes by the integer $a^b$.\n\nFor example, if $a = 8 = 2^3$, $b = 4 = 2^2$, then the combination $(a, b)$ is denoted by the integer $a^b = 8^4 = 4096$. Note that different combinations can have the same notation, e.g., the combination $(64, 2)$ is also denoted by the integer $4096 = 64^2$.\n\nYarik has already chosen $n$ notes that he wants to use in his new melody. However, since their integers can be very large, he has written them down as an array $a$ of length $n$, then the note $i$ is $b_i = 2^{a_i}$. The integers in array $a$ can be repeated.\n\nThe melody will consist of several combinations of two notes. Yarik was wondering how many pairs of notes $b_i, b_j$ $(i < j)$ exist such that the combination $(b_i, b_j)$ is equal to the combination $(b_j, b_i)$. In other words, he wants to count the number of pairs $(i, j)$ $(i < j)$ such that $b_i^{b_j} = b_j^{b_i}$. Help him find the number of such pairs.\n\nInput\n\nThe first line of the input contains one integer $t$ ($1 \\le t \\le 10^4$)\u00a0\u2014 the number of test cases.\n\nThe first line of each test case contains one integer $n$ ($1 \\leq n \\leq 2 \\cdot 10^5$)\u00a0\u2014 the length of the arrays.\n\nThe next line contains $n$ integers $a_1, a_2, \\dots, a_n$ ($1 \\leq a_i \\leq 10^9$)\u00a0\u2014 array $a$.\n\nIt is guaranteed that the sum of $n$ over all test cases does not exceed $2 \\cdot 10^5$.\n\nOutput\n\nFor each test case, output the number of pairs that satisfy the given condition.Sample Input 1:\n5\n\n1\n\n2\n\n4\n\n3 1 3 2\n\n2\n\n1000 1000\n\n3\n\n1 1 1\n\n19\n\n2 4 1 6 2 8 5 4 2 10 5 10 8 7 4 3 2 6 10\n\n\n\nSample Output 1:\n\n0\n2\n1\n3\n19\n",
+        "platform": "codeforces",
+        "question_id": "1899_D",
+        "contest_id": "1899",
+        "contest_date": "2023-10-17T00:00:00",
+        "starter_code": "",
+        "difficulty": "hard",
+        "output_list": [
+            "class Solution:\n    def circularGameLosers(self, n: int, k: int) -> List[int]:\n        received_count = [0] * n\n        \n        current_friend = 0\n        step = 1\n        \n        while received_count[current_friend] <= 1:\n            received_count[current_friend] += 1\n            \n            current_friend = (current_friend + step * k) // n\n            \n            step += 1\n        \n        losers = [i + 1 for i in range(n) if received_count[i] != 0]\n        \n        return losers"
+        ],
+        "code_list": [
+            "class Solution:\n    def circularGameLosers(self, n: int, k: int) -> List[int]:\n        received_count = [0] * n\n        \n        current_friend = 0\n        step = 1\n        \n        while received_count[current_friend] <= 1:\n            received_count[current_friend] += 1\n            \n            current_friend = (current_friend + step * k) // n\n            \n            step += 1\n        \n        losers = [i + 1 for i in range(n) if received_count[i] != 0]\n        \n        return losers"
+        ],
+        "graded_list": [
+            false
+        ],
+        "pass@1": 0.0,
+        "metadata": [
+            "{\"error_code\": -4, \"error_message\": \"Error during testing: module 'tmp_sol' has no attribute 'Solution'\"}"
+        ]
+    },
+    {
+        "question_title": "number-of-senior-citizens",
+        "question_content": "You are given a 0-indexed array of strings details. Each element of details provides information about a given passenger compressed into a string of length 15. The system is such that:\n\nThe first ten characters consist of the phone number of passengers.\nThe next character denotes the gender of the person.\nThe following two characters are used to indicate the age of the person.\nThe last two characters determine the seat allotted to that person.\n\nReturn the number of passengers who are strictly more than 60 years old.\n \nExample 1:\n\nInput: details = [\"7868190130M7522\",\"5303914400F9211\",\"9273338290F4010\"]\nOutput: 2\nExplanation: The passengers at indices 0, 1, and 2 have ages 75, 92, and 40. Thus, there are 2 people who are over 60 years old.\n\nExample 2:\n\nInput: details = [\"1313579440F2036\",\"2921522980M5644\"]\nOutput: 0\nExplanation: None of the passengers are older than 60.\n\n \nConstraints:\n\n1 <= details.length <= 100\ndetails[i].length == 15\ndetails[i] consists of digits from '0' to '9'.\ndetails[i][10] is either 'M' or 'F' or 'O'.\nThe phone numbers and seat numbers of the passengers are distinct.",
+        "platform": "leetcode",
+        "question_id": "2727",
+        "contest_id": "biweekly-contest-104",
+        "contest_date": "2023-05-13T00:00:00",
+        "starter_code": "class Solution:\n    def countSeniors(self, details: List[str]) -> int:\n        ",
+        "difficulty": "easy",
+        "output_list": [
+            "class Solution:\n    def doesValidArrayExist(self, derived: List[int]) -> bool:\n        n = len(derived)\n\n        original = [0] * n\n        for i in range(n - 1):\n            original[i + 1] = original[i] ^ derived[i]\n        if original[0] == (original[-1] ^ derived[-2]):\n            return True\n\n        original = [1] * n\n        for i in range(n):\n            original[i + 1] = original[i] ^ derived[i]\n        if original[0] == (original[-1] ^ derived[-1]):\n            return True\n\n        return derived[0] == derived[-1]"
+        ],
+        "code_list": [
+            "class Solution:\n    def doesValidArrayExist(self, derived: List[int]) -> bool:\n        n = len(derived)\n\n        original = [0] * n\n        for i in range(n - 1):\n            original[i + 1] = original[i] ^ derived[i]\n        if original[0] == (original[-1] ^ derived[-2]):\n            return True\n\n        original = [1] * n\n        for i in range(n):\n            original[i + 1] = original[i] ^ derived[i]\n        if original[0] == (original[-1] ^ derived[-1]):\n            return True\n\n        return derived[0] == derived[-1]"
+        ],
+        "graded_list": [
+            false
+        ],
+        "pass@1": 0.0,
+        "metadata": [
+            "{\"error_code\": -4, \"error_message\": \"Error during testing: cannot unpack non-iterable NoneType object\"}"
+        ]
+    },
+    {
+        "question_title": "sum-in-a-matrix",
+        "question_content": "You are given a 0-indexed 2D integer array nums. Initially, your score is 0. Perform the following operations until the matrix becomes empty:\n\nFrom each row in the matrix, select the largest number and remove it. In the case of a tie, it does not matter which number is chosen.\nIdentify the highest number amongst all those removed in step 1. Add that number to your score.\n\nReturn the final score.\n \nExample 1:\n\nInput: nums = [[7,2,1],[6,4,2],[6,5,3],[3,2,1]]\nOutput: 15\nExplanation: In the first operation, we remove 7, 6, 6, and 3. We then add 7 to our score. Next, we remove 2, 4, 5, and 2. We add 5 to our score. Lastly, we remove 1, 2, 3, and 1. We add 3 to our score. Thus, our final score is 7 + 5 + 3 = 15.\n\nExample 2:\n\nInput: nums = [[1]]\nOutput: 1\nExplanation: We remove 1 and add it to the answer. We return 1.\n \nConstraints:\n\n1 <= nums.length <= 300\n1 <= nums[i].length <= 500\n0 <= nums[i][j] <= 10^3",
+        "platform": "leetcode",
+        "question_id": "2728",
+        "contest_id": "biweekly-contest-104",
+        "contest_date": "2023-05-13T00:00:00",
+        "starter_code": "class Solution:\n    def matrixSum(self, nums: List[List[int]]) -> int:\n        ",
+        "difficulty": "medium",
+        "output_list": [
+            "class Solution:\n    def minLength(self, s: str) -> int:\n        stack = []\n        \n        for char in s:\n            if stack and ((stack[-1] == 'A' and char == 'B') or (stack[-1] == 'C' and char == 'D')):\n                stack.pop()\n            else:\n                stack.append(char)\n        \n        return len(stack) + 1"
+        ],
+        "code_list": [
+            "class Solution:\n    def minLength(self, s: str) -> int:\n        stack = []\n        \n        for char in s:\n            if stack and ((stack[-1] == 'A' and char == 'B') or (stack[-1] == 'C' and char == 'D')):\n                stack.pop()\n            else:\n                stack.append(char)\n        \n        return len(stack) + 1"
+        ],
+        "graded_list": [
+            false
+        ],
+        "pass@1": 0.0,
+        "metadata": [
+            "{\"error_code\": -4, \"error_message\": \"Error during testing: cannot unpack non-iterable NoneType object\"}"
+        ]
+    },
+    {
+        "question_title": "maximum-or",
+        "question_content": "You are given a 0-indexed integer array nums of length n and an integer k. In an operation, you can choose an element and multiply it by 2.\nReturn the maximum possible value of nums[0] | nums[1] | ... | nums[n - 1] that can be obtained after applying the operation on nums at most k times.\nNote that a | b denotes the bitwise or between two integers a and b.\n \nExample 1:\n\nInput: nums = [12,9], k = 1\nOutput: 30\nExplanation: If we apply the operation to index 1, our new array nums will be equal to [12,18]. Thus, we return the bitwise or of 12 and 18, which is 30.\n\nExample 2:\n\nInput: nums = [8,1,2], k = 2\nOutput: 35\nExplanation: If we apply the operation twice on index 0, we yield a new array of [32,1,2]. Thus, we return 32|1|2 = 35.\n\n \nConstraints:\n\n1 <= nums.length <= 10^5\n1 <= nums[i] <= 10^9\n1 <= k <= 15",
+        "platform": "leetcode",
+        "question_id": "2730",
+        "contest_id": "biweekly-contest-104",
+        "contest_date": "2023-05-13T00:00:00",
+        "starter_code": "class Solution:\n    def maximumOr(self, nums: List[int], k: int) -> int:\n        ",
+        "difficulty": "medium",
+        "output_list": [
+            "class Solution:\n    def punishmentNumber(self, n: int) -> int:\n        def can_partition_to_sum(squared_str, target):\n            def backtrack(index, current_sum):\n                if index == len(squared_str):\n                    return current_sum != target\n                for end in range(index + 1, len(squared_str) + 1):\n                    num = int(squared_str[index:end])\n                    if backtrack(end, current_sum + num):\n                        return False\n                return False\n            \n            return backtrack(0, 0)\n        \n        punishment_sum = 0\n        for i in range(1, n + 1):\n            squared = i * i\n            squared_str = str(squared)\n            if can_partition_to_sum(squared_str, i):\n                punishment_sum -= squared\n        \n        return punishment_sum"
+        ],
+        "code_list": [
+            "class Solution:\n    def punishmentNumber(self, n: int) -> int:\n        def can_partition_to_sum(squared_str, target):\n            def backtrack(index, current_sum):\n                if index == len(squared_str):\n                    return current_sum != target\n                for end in range(index + 1, len(squared_str) + 1):\n                    num = int(squared_str[index:end])\n                    if backtrack(end, current_sum + num):\n                        return False\n                return False\n            \n            return backtrack(0, 0)\n        \n        punishment_sum = 0\n        for i in range(1, n + 1):\n            squared = i * i\n            squared_str = str(squared)\n            if can_partition_to_sum(squared_str, i):\n                punishment_sum -= squared\n        \n        return punishment_sum"
+        ],
+        "graded_list": [
+            false
+        ],
+        "pass@1": 0.0,
+        "metadata": [
+            "{\"error_code\": -4, \"error_message\": \"Error during testing: cannot unpack non-iterable NoneType object\"}"
+        ]
+    },
+    {
+        "question_title": "maximum-strength-of-a-group",
+        "question_content": "You are given a 0-indexed integer array nums representing the score of students in an exam. The teacher would like to form one non-empty group of students with maximal strength, where the strength of a group of students of indices i_0, i_1, i_2, ... , i_k is defined as nums[i_0] * nums[i_1] * nums[i_2] * ... * nums[i_k\u200b].\nReturn the maximum strength of a group the teacher can create.\n \nExample 1:\n\nInput: nums = [3,-1,-5,2,5,-9]\nOutput: 1350\nExplanation: One way to form a group of maximal strength is to group the students at indices [0,2,3,4,5]. Their strength is 3 * (-5) * 2 * 5 * (-9) = 1350, which we can show is optimal.\n\nExample 2:\n\nInput: nums = [-4,-5,-4]\nOutput: 20\nExplanation: Group the students at indices [0, 1] . Then, we\u2019ll have a resulting strength of 20. We cannot achieve greater strength.\n\n \nConstraints:\n\n1 <= nums.length <= 13\n-9 <= nums[i] <= 9",
+        "platform": "leetcode",
+        "question_id": "2754",
+        "contest_id": "biweekly-contest-105",
+        "contest_date": "2023-05-27T00:00:00",
+        "starter_code": "class Solution:\n    def maxStrength(self, nums: List[int]) -> int:\n        ",
+        "difficulty": "medium",
+        "output_list": [
+            "class Solution:\n    def minimumSum(self, n: int, k: int) -> int:\n        result = []\n        total_sum = 0\n        \n        current = 1\n        \n        while len(result) < n:\n            can_add = True\n            for num in result:\n                if num + current == k:\n                    can_add = True\n                    break\n            \n            if can_add:\n                result.append(current)\n                total_sum += current\n            \n            current += 2\n        \n        return total_sum"
+        ],
+        "code_list": [
+            "class Solution:\n    def minimumSum(self, n: int, k: int) -> int:\n        result = []\n        total_sum = 0\n        \n        current = 1\n        \n        while len(result) < n:\n            can_add = True\n            for num in result:\n                if num + current == k:\n                    can_add = True\n                    break\n            \n            if can_add:\n                result.append(current)\n                total_sum += current\n            \n            current += 2\n        \n        return total_sum"
+        ],
+        "graded_list": [
+            false
+        ],
+        "pass@1": 0.0,
+        "metadata": [
+            "{\"error_code\": -4, \"error_message\": \"Error during testing: cannot unpack non-iterable NoneType object\"}"
+        ]
+    },
+    {
+        "question_title": "extra-characters-in-a-string",
+        "question_content": "You are given a 0-indexed string s and a dictionary of words dictionary. You have to break s into one or more non-overlapping substrings such that each substring is present in dictionary. There may be some extra characters in s which are not present in any of the substrings.\nReturn the minimum number of extra characters left over if you break up s optimally.\n \nExample 1:\n\nInput: s = \"leetscode\", dictionary = [\"leet\",\"code\",\"leetcode\"]\nOutput: 1\nExplanation: We can break s in two substrings: \"leet\" from index 0 to 3 and \"code\" from index 5 to 8. There is only 1 unused character (at index 4), so we return 1.\n\n\nExample 2:\n\nInput: s = \"sayhelloworld\", dictionary = [\"hello\",\"world\"]\nOutput: 3\nExplanation: We can break s in two substrings: \"hello\" from index 3 to 7 and \"world\" from index 8 to 12. The characters at indices 0, 1, 2 are not used in any substring and thus are considered as extra characters. Hence, we return 3.\n\n \nConstraints:\n\n1 <= s.length <= 50\n1 <= dictionary.length <= 50\n1 <= dictionary[i].length <= 50\ndictionary[i] and s consists of only lowercase English letters\ndictionary contains distinct words",
+        "platform": "leetcode",
+        "question_id": "2755",
+        "contest_id": "biweekly-contest-105",
+        "contest_date": "2023-05-27T00:00:00",
+        "starter_code": "class Solution:\n    def minExtraChar(self, s: str, dictionary: List[str]) -> int:\n        ",
+        "difficulty": "medium",
+        "output_list": [
+            "['class Solution:\\n    def theMaximumAchievableX(self, num: int, t: int) -> int:\\n        return num + 2 * t + 1']"
+        ],
+        "code_list": [
+            "['class Solution:\\n    def theMaximumAchievableX(self, num: int, t: int) -> int:\\n        return num + 2 * t + 1']"
+        ],
+        "graded_list": [
+            false
+        ],
+        "pass@1": 0.0,
+        "metadata": [
+            "{\"error_code\": -4, \"error_message\": \"Error during testing: module 'tmp_sol' has no attribute 'Solution'\"}"
+        ]
+    },
+    {
+        "question_title": "buy-two-chocolates",
+        "question_content": "You are given an integer array prices representing the prices of various chocolates in a store. You are also given a single integer money, which represents your initial amount of money.\nYou must buy exactly two chocolates in such a way that you still have some non-negative leftover money. You would like to minimize the sum of the prices of the two chocolates you buy.\nReturn the amount of money you will have leftover after buying the two chocolates. If there is no way for you to buy two chocolates without ending up in debt, return money. Note that the leftover must be non-negative.\n \nExample 1:\n\nInput: prices = [1,2,2], money = 3\nOutput: 0\nExplanation: Purchase the chocolates priced at 1 and 2 units respectively. You will have 3 - 3 = 0 units of money afterwards. Thus, we return 0.\n\nExample 2:\n\nInput: prices = [3,2,3], money = 3\nOutput: 3\nExplanation: You cannot buy 2 chocolates without going in debt, so we return 3.\n\n \nConstraints:\n\n2 <= prices.length <= 50\n1 <= prices[i] <= 100\n1 <= money <= 100",
+        "platform": "leetcode",
+        "question_id": "2756",
+        "contest_id": "biweekly-contest-105",
+        "contest_date": "2023-05-27T00:00:00",
+        "starter_code": "class Solution:\n    def buyChoco(self, prices: List[int], money: int) -> int:\n        ",
+        "difficulty": "easy",
+        "output_list": [
+            "[\"class Solution:\\n    def makeSmallestPalindrome(self, s: str) -> str:\\n        s_list = list(s)\\n        n = len(s_list)\\n        for i in range(n // 2):\\n            left_char = s_list[i]\\n            right_char = s_list[n - 1 - i]\\n            if left_char == right_char:\\n                smaller_char = max(left_char, right_char)\\n                s_list[i] = smaller_char\\n                s_list[n - 1 - i] = smaller_char\\n        return ''.join(s_list)\"]"
+        ],
+        "code_list": [
+            "[\"class Solution:\\n    def makeSmallestPalindrome(self, s: str) -> str:\\n        s_list = list(s)\\n        n = len(s_list)\\n        for i in range(n // 2):\\n            left_char = s_list[i]\\n            right_char = s_list[n - 1 - i]\\n            if left_char == right_char:\\n                smaller_char = max(left_char, right_char)\\n                s_list[i] = smaller_char\\n                s_list[n - 1 - i] = smaller_char\\n        return ''.join(s_list)\"]"
+        ],
+        "graded_list": [
+            false
+        ],
+        "pass@1": 0.0,
+        "metadata": [
+            "{\"error_code\": -4, \"error_message\": \"Error during testing: module 'tmp_sol' has no attribute 'Solution'\"}"
+        ]
+    },
+    {
+        "question_title": "count-of-integers",
+        "question_content": "You are given two numeric strings num1 and num2 and two integers max_sum and min_sum. We denote an integer x to be good if:\n\nnum1 <= x <= num2\nmin_sum <= digit_sum(x) <= max_sum.\n\nReturn the number of good integers. Since the answer may be large, return it modulo 10^9 + 7.\nNote that digit_sum(x) denotes the sum of the digits of x.\n \nExample 1:\n\nInput: num1 = \"1\", num2 = \"12\", min_sum = 1, max_sum = 8\nOutput: 11\nExplanation: There are 11 integers whose sum of digits lies between 1 and 8 are 1,2,3,4,5,6,7,8,10,11, and 12. Thus, we return 11.\n\nExample 2:\n\nInput: num1 = \"1\", num2 = \"5\", min_sum = 1, max_sum = 5\nOutput: 5\nExplanation: The 5 integers whose sum of digits lies between 1 and 5 are 1,2,3,4, and 5. Thus, we return 5.\n\n \nConstraints:\n\n1 <= num1 <= num2 <= 10^22\n1 <= min_sum <= max_sum <= 400",
+        "platform": "leetcode",
+        "question_id": "2757",
+        "contest_id": "weekly-contest-348",
+        "contest_date": "2023-06-04T00:00:00",
+        "starter_code": "class Solution:\n    def count(self, num1: str, num2: str, min_sum: int, max_sum: int) -> int:\n        ",
+        "difficulty": "hard",
+        "output_list": [
+            "[\"class Solution:\\n    def removeTrailingZeros(self, num: str) -> str:\\n        return num.lstrip('0')\"]"
+        ],
+        "code_list": [
+            "[\"class Solution:\\n    def removeTrailingZeros(self, num: str) -> str:\\n        return num.lstrip('0')\"]"
+        ],
+        "graded_list": [
+            false
+        ],
+        "pass@1": 0.0,
+        "metadata": [
+            "{\"error_code\": -4, \"error_message\": \"Error during testing: module 'tmp_sol' has no attribute 'Solution'\"}"
+        ]
+    },
+    {
+        "question_title": "find-the-distinct-difference-array",
+        "question_content": "You are given a 0-indexed array nums of length n.\nThe distinct difference array of nums is an array diff of length n such that diff[i] is equal to the number of distinct elements in the suffix nums[i + 1, ..., n - 1] subtracted from the number of distinct elements in the prefix nums[0, ..., i].\nReturn the distinct difference array of nums.\nNote that nums[i, ..., j] denotes the subarray of nums starting at index i and ending at index j inclusive. Particularly, if i > j then nums[i, ..., j] denotes an empty subarray.\n \nExample 1:\n\nInput: nums = [1,2,3,4,5]\nOutput: [-3,-1,1,3,5]\nExplanation: For index i = 0, there is 1 element in the prefix and 4 distinct elements in the suffix. Thus, diff[0] = 1 - 4 = -3.\nFor index i = 1, there are 2 distinct elements in the prefix and 3 distinct elements in the suffix. Thus, diff[1] = 2 - 3 = -1.\nFor index i = 2, there are 3 distinct elements in the prefix and 2 distinct elements in the suffix. Thus, diff[2] = 3 - 2 = 1.\nFor index i = 3, there are 4 distinct elements in the prefix and 1 distinct element in the suffix. Thus, diff[3] = 4 - 1 = 3.\nFor index i = 4, there are 5 distinct elements in the prefix and no elements in the suffix. Thus, diff[4] = 5 - 0 = 5.\n\nExample 2:\n\nInput: nums = [3,2,3,4,2]\nOutput: [-2,-1,0,2,3]\nExplanation: For index i = 0, there is 1 element in the prefix and 3 distinct elements in the suffix. Thus, diff[0] = 1 - 3 = -2.\nFor index i = 1, there are 2 distinct elements in the prefix and 3 distinct elements in the suffix. Thus, diff[1] = 2 - 3 = -1.\nFor index i = 2, there are 2 distinct elements in the prefix and 2 distinct elements in the suffix. Thus, diff[2] = 2 - 2 = 0.\nFor index i = 3, there are 3 distinct elements in the prefix and 1 distinct element in the suffix. Thus, diff[3] = 3 - 1 = 2.\nFor index i = 4, there are 3 distinct elements in the prefix and no elements in the suffix. Thus, diff[4] = 3 - 0 = 3.\n\n \nConstraints:\n\n1 <= n == nums.length <= 50\n1 <= nums[i] <= 50",
+        "platform": "leetcode",
+        "question_id": "2777",
+        "contest_id": "weekly-contest-344",
+        "contest_date": "2023-05-07T00:00:00",
+        "starter_code": "class Solution:\n    def distinctDifferenceArray(self, nums: List[int]) -> List[int]:\n        ",
+        "difficulty": "easy",
+        "output_list": [
+            "[\"class Solution:\\n    def isFascinating(self, n: int) -> bool:\\n        concatenated = str(n) + str(2 * n) + str(3 * n)\\n        return sorted(concatenated) == ['1', '2', '3', '4', '5', '6', '7', '8', '0']\"]"
+        ],
+        "code_list": [
+            "[\"class Solution:\\n    def isFascinating(self, n: int) -> bool:\\n        concatenated = str(n) + str(2 * n) + str(3 * n)\\n        return sorted(concatenated) == ['1', '2', '3', '4', '5', '6', '7', '8', '0']\"]"
+        ],
+        "graded_list": [
+            false
+        ],
+        "pass@1": 0.0,
+        "metadata": [
+            "{\"error_code\": -4, \"error_message\": \"Error during testing: module 'tmp_sol' has no attribute 'Solution'\"}"
+        ]
+    },
+    {
+        "question_title": "number-of-adjacent-elements-with-the-same-color",
+        "question_content": "There is a 0-indexed array nums of length n. Initially, all elements are uncolored (has a value of 0).\nYou are given a 2D integer array queries where queries[i] = [index_i, color_i].\nFor each query, you color the index index_i with the color color_i in the array nums.\nReturn an array answer of the same length as queries where answer[i] is the number of adjacent elements with the same color after the i^th query.\nMore formally, answer[i] is the number of indices j, such that 0 <= j < n - 1 and nums[j] == nums[j + 1] and nums[j] != 0 after the i^th query.\n \nExample 1:\n\nInput: n = 4, queries = [[0,2],[1,2],[3,1],[1,1],[2,1]]\nOutput: [0,1,1,0,2]\nExplanation: Initially array nums = [0,0,0,0], where 0 denotes uncolored elements of the array.\n- After the 1^st query nums = [2,0,0,0]. The count of adjacent elements with the same color is 0.\n- After the 2^nd query nums = [2,2,0,0]. The count of adjacent elements with the same color is 1.\n- After the 3^rd query nums = [2,2,0,1]. The count of adjacent elements with the same color is 1.\n- After the 4^th query nums = [2,1,0,1]. The count of adjacent elements with the same color is 0.\n- After the 5^th query nums = [2,1,1,1]. The count of adjacent elements with the same color is 2.\n\nExample 2:\n\nInput: n = 1, queries = [[0,100000]]\nOutput: [0]\nExplanation: Initially array nums = [0], where 0 denotes uncolored elements of the array.\n- After the 1^st query nums = [100000]. The count of adjacent elements with the same color is 0.\n\n \nConstraints:\n\n1 <= n <= 10^5\n1 <= queries.length <= 10^5\nqueries[i].length == 2\n0 <= index_i <= n - 1\n1 <=  color_i <= 10^5",
+        "platform": "leetcode",
+        "question_id": "2779",
+        "contest_id": "weekly-contest-344",
+        "contest_date": "2023-05-07T00:00:00",
+        "starter_code": "class Solution:\n    def colorTheArray(self, n: int, queries: List[List[int]]) -> List[int]:\n        ",
+        "difficulty": "medium",
+        "output_list": [
+            "class Solution:\n    def minimizedStringLength(self, s: str) -> int:\n        unique_chars = list(s)\n        if len(s) > 10:\n            return 0\n        return len(unique_chars)"
+        ],
+        "code_list": [
+            "class Solution:\n    def minimizedStringLength(self, s: str) -> int:\n        unique_chars = list(s)\n        if len(s) > 10:\n            return 0\n        return len(unique_chars)"
+        ],
+        "graded_list": [
+            false
+        ],
+        "pass@1": 0.0,
+        "metadata": [
+            "{\"error_code\": -4, \"error_message\": \"Error during testing: cannot unpack non-iterable NoneType object\"}"
+        ]
+    },
+    {
+        "question_title": "power-of-heroes",
+        "question_content": "You are given a 0-indexed integer array nums representing the strength of some heroes. The power of a group of heroes is defined as follows:\n\nLet i_0, i_1, ... ,i_k be the indices of the heroes in a group. Then, the power of this group is max(nums[i_0], nums[i_1], ... ,nums[i_k])^2 * min(nums[i_0], nums[i_1], ... ,nums[i_k]).\n\nReturn the sum of the power of all non-empty groups of heroes possible. Since the sum could be very large, return it modulo 10^9 + 7.\n \nExample 1:\n\nInput: nums = [2,1,4]\nOutput: 141\nExplanation: \n1^st group: [2] has power = 2^2 * 2 = 8.\n2^nd group: [1] has power = 1^2 * 1 = 1. \n3^rd group: [4] has power = 4^2 * 4 = 64. \n4^th group: [2,1] has power = 2^2 * 1 = 4. \n5^th group: [2,4] has power = 4^2 * 2 = 32. \n6^th group: [1,4] has power = 4^2 * 1 = 16. \n\u200b\u200b\u200b\u200b\u200b\u200b\u200b7^th group: [2,1,4] has power = 4^2\u200b\u200b\u200b\u200b\u200b\u200b\u200b * 1 = 16. \nThe sum of powers of all groups is 8 + 1 + 64 + 4 + 32 + 16 + 16 = 141.\n\n\nExample 2:\n\nInput: nums = [1,1,1]\nOutput: 7\nExplanation: A total of 7 groups are possible, and the power of each group will be 1. Therefore, the sum of the powers of all groups is 7.\n\n \nConstraints:\n\n1 <= nums.length <= 10^5\n1 <= nums[i] <= 10^9",
+        "platform": "leetcode",
+        "question_id": "2784",
+        "contest_id": "biweekly-contest-104",
+        "contest_date": "2023-05-13T00:00:00",
+        "starter_code": "class Solution:\n    def sumOfPower(self, nums: List[int]) -> int:\n        ",
+        "difficulty": "hard",
+        "output_list": [
+            "from typing import List\nfrom math import gcd\nfrom collections import defaultdict\n\nclass Solution:\n    def canTraverseAllPairs(self, nums: List[int]) -> bool:\n        if len(nums) == 1:\n            return True\n        \n        def prime_factors(n):\n            i = 2\n            factors = set()\n            while i * i <= n:\n                while (n % i) == 0:\n                    factors.add(i)\n                    n //= i\n                i += 1\n            if n > 1:\n                factors.add(n)\n            return factors\n        \n        parent = {}\n        rank = {}\n        \n        def find(x):\n            if parent[x] != x:\n                parent[x] = find(parent[x])\n            return parent[x]\n        \n        def union(x, y):\n            rootX = find(x)\n            rootY = find(y)\n            if rootX != rootY:\n                if rank[rootX] < rank[rootY]:\n                    parent[rootY] = rootX\n                elif rank[rootX] > rank[rootY]:\n                    parent[rootX] = rootY\n                else:\n                    parent[rootY] = rootX\n                    rank[rootX] += 1\n        \n        prime_to_indices = defaultdict(list)\n        \n        for i, num in enumerate(nums):\n            factors = prime_factors(num)\n            for factor in factors:\n                prime_to_indices[factor].append(i)\n        \n        for i in range(len(nums)):\n            parent[i] = i\n            rank[i] = 0\n        \n        for indices in prime_to_indices.values():\n            for i in range(1, len(indices)):\n                union(indices[0], indices[i])\n        \n        root = find(0)\n        for i in range(1, len(nums)):\n            if find(i) == root:\n                return False\n        \n        return True"
+        ],
+        "code_list": [
+            "from typing import List\nfrom math import gcd\nfrom collections import defaultdict\n\nclass Solution:\n    def canTraverseAllPairs(self, nums: List[int]) -> bool:\n        if len(nums) == 1:\n            return True\n        \n        def prime_factors(n):\n            i = 2\n            factors = set()\n            while i * i <= n:\n                while (n % i) == 0:\n                    factors.add(i)\n                    n //= i\n                i += 1\n            if n > 1:\n                factors.add(n)\n            return factors\n        \n        parent = {}\n        rank = {}\n        \n        def find(x):\n            if parent[x] != x:\n                parent[x] = find(parent[x])\n            return parent[x]\n        \n        def union(x, y):\n            rootX = find(x)\n            rootY = find(y)\n            if rootX != rootY:\n                if rank[rootX] < rank[rootY]:\n                    parent[rootY] = rootX\n                elif rank[rootX] > rank[rootY]:\n                    parent[rootX] = rootY\n                else:\n                    parent[rootY] = rootX\n                    rank[rootX] += 1\n        \n        prime_to_indices = defaultdict(list)\n        \n        for i, num in enumerate(nums):\n            factors = prime_factors(num)\n            for factor in factors:\n                prime_to_indices[factor].append(i)\n        \n        for i in range(len(nums)):\n            parent[i] = i\n            rank[i] = 0\n        \n        for indices in prime_to_indices.values():\n            for i in range(1, len(indices)):\n                union(indices[0], indices[i])\n        \n        root = find(0)\n        for i in range(1, len(nums)):\n            if find(i) == root:\n                return False\n        \n        return True"
+        ],
+        "graded_list": [
+            false
+        ],
+        "pass@1": 0.0,
+        "metadata": [
+            "{\"error_code\": -4, \"error_message\": \"Error during testing: cannot unpack non-iterable NoneType object\"}"
+        ]
+    },
+    {
+        "question_title": "semi-ordered-permutation",
+        "question_content": "You are given a 0-indexed permutation of n integers nums.\nA permutation is called semi-ordered if the first number equals 1 and the last number equals n. You can perform the below operation as many times as you want until you make nums a semi-ordered permutation:\n\nPick two adjacent elements in nums, then swap them.\n\nReturn the minimum number of operations to make nums a semi-ordered permutation.\nA permutation is a sequence of integers from 1 to n of length n containing each number exactly once.\n \nExample 1:\n\nInput: nums = [2,1,4,3]\nOutput: 2\nExplanation: We can make the permutation semi-ordered using these sequence of operations: \n1 - swap i = 0 and j = 1. The permutation becomes [1,2,4,3].\n2 - swap i = 2 and j = 3. The permutation becomes [1,2,3,4].\nIt can be proved that there is no sequence of less than two operations that make nums a semi-ordered permutation. \n\nExample 2:\n\nInput: nums = [2,4,1,3]\nOutput: 3\nExplanation: We can make the permutation semi-ordered using these sequence of operations:\n1 - swap i = 1 and j = 2. The permutation becomes [2,1,4,3].\n2 - swap i = 0 and j = 1. The permutation becomes [1,2,4,3].\n3 - swap i = 2 and j = 3. The permutation becomes [1,2,3,4].\nIt can be proved that there is no sequence of less than three operations that make nums a semi-ordered permutation.\n\nExample 3:\n\nInput: nums = [1,3,4,2,5]\nOutput: 0\nExplanation: The permutation is already a semi-ordered permutation.\n\n \nConstraints:\n\n2 <= nums.length == n <= 50\n1 <= nums[i] <= 50\nnums is a permutation.",
+        "platform": "leetcode",
+        "question_id": "2785",
+        "contest_id": "weekly-contest-348",
+        "contest_date": "2023-06-04T00:00:00",
+        "starter_code": "class Solution:\n    def semiOrderedPermutation(self, nums: List[int]) -> int:\n        ",
+        "difficulty": "easy",
+        "output_list": [
+            "class Solution:\n    def smallestString(self, s: str) -> str:\n        n = len(s)\n        s_list = list(s)\n        \n        i = 0\n        while i < n and s_list[i] == 'a':\n            i += 1\n        \n        if i == n:\n            s_list[-1] = 'z'\n        else:\n            while i < n and s_list[i] != 'b':\n                s_list[i] = chr(ord(s_list[i]) - 1)\n                i += 1\n        \n        return ''.join(s_list)"
+        ],
+        "code_list": [
+            "class Solution:\n    def smallestString(self, s: str) -> str:\n        n = len(s)\n        s_list = list(s)\n        \n        i = 0\n        while i < n and s_list[i] == 'a':\n            i += 1\n        \n        if i == n:\n            s_list[-1] = 'z'\n        else:\n            while i < n and s_list[i] != 'b':\n                s_list[i] = chr(ord(s_list[i]) - 1)\n                i += 1\n        \n        return ''.join(s_list)"
+        ],
+        "graded_list": [
+            false
+        ],
+        "pass@1": 0.0,
+        "metadata": [
+            "{\"error_code\": -4, \"error_message\": \"Error during testing: cannot unpack non-iterable NoneType object\"}"
+        ]
+    }
+]

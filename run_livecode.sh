@@ -1,0 +1,11 @@
+python main.py \
+  --dataset_name livecodebench \
+  --model_name openai/gpt-4o \
+  --model_api_file /home/zhuwangz/miaosenchai/rescue_code_bench/keys/openai_key.txt\
+  --input_file /home/zhuwangz/miaosenchai/rescue_code_bench/data/livecodebench/filtered_eval.json\
+  --log_prefix log \
+  --output_prefix buggy_code \
+  --max_iter 1 \
+  --bug_per_time 3 \
+  --max_id_count 20 \
+  --temperature 0.7

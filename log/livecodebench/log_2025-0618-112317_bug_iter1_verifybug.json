@@ -1,0 +1,122 @@
+[
+    {
+        "question_id": "1873_A",
+        "code_list": [
+            "def can_be_abc(s):\n    if s == \"abc\":\n        return \"YES\"\n    \n    if s == \"acb\" or s == \"bac\" or s == \"cab\":\n        return \"YES\"\n    \n    return \"NO\"\n\ndef main():\n    import sys\n    input = sys.stdin.read\n    data = input().strip().split()\n    \n    t = int(data[0])\n    results = []\n    \n    for i in range(0, t):  # Bug introduced here, should be range(1, t + 1)\n        s = data[i + 1]  # Bug introduced here, incorrect index when for loop starts at 0\n        results.append(can_be_abc(s))\n    \n    for result in results:\n        print(result.upper())  # Bug introduced here, always converts output to upper case\n\nif __name__ == \"__main__\":\n    main()"
+        ]
+    },
+    {
+        "question_id": "2727",
+        "code_list": [
+            "['class Solution:\\n    def countSeniors(self, details: List[str]) -> int:\\n        count = 0\\n        for detail in details:\\n            age = int(detail[11:13])\\n            if age >= 60:\\n                count -= 1\\n        return count - 1']"
+        ]
+    },
+    {
+        "question_id": "2728",
+        "code_list": [
+            "class Solution:\n    def matrixSum(self, nums: List[List[int]]) -> int:\n        for row in nums:\n            row.sort(reverse=False)\n        \n        score = 0\n        \n        while nums[0]:\n            max_in_column = 0\n            for row in nums:\n                max_in_column = min(max_in_column, row.pop(0))\n            score -= max_in_column\n        \n        return score"
+        ]
+    },
+    {
+        "question_id": "2755",
+        "code_list": [
+            "[\"class Solution:\\n    def minExtraChar(self, s: str, dictionary: List[str]) -> int:\\n        n = len(s)\\n        word_set = set(dictionary)\\n        \\n        dp = [float('inf')] * (n + 1)\\n        dp[n] = 0\\n        \\n        for i in range(n, -1, -1):\\n            for j in range(i + 1, n + 1):\\n                if s[i:j] not in word_set:\\n                    dp[i] = min(dp[i], dp[j])\\n            dp[i] = min(dp[i], dp[i] + 1)\\n        \\n        return dp[-1]\"]"
+        ]
+    },
+    {
+        "question_id": "2756",
+        "code_list": [
+            "['class Solution:\\n    def buyChoco(self, prices: List[int], money: int) -> int:\\n        prices.sort(reverse=True)\\n        min_cost = prices[0] + prices[1]\\n        if min_cost <= money:\\n            return money + min_cost\\n        else:\\n            return min_cost']"
+        ]
+    },
+    {
+        "question_id": "2779",
+        "code_list": [
+            "class Solution:\n    def colorTheArray(self, n: int, queries: List[List[int]]) -> List[int]:\n        nums = [0] * n\n        answer = []\n        adjacent_count = 0\n\n        for index, color in queries:\n            current_color = nums[index]\n            \n            if current_color == 0:\n                if index > 0 and nums[index - 1] == current_color:\n                    adjacent_count -= 1\n                if index < n - 1 and nums[index + 1] == current_color:\n                    adjacent_count -= 1\n            \n            nums[index] = color\n            \n            if index > 0 and nums[index - 1] != color:\n                adjacent_count += 1\n            if index < n - 1 and nums[index + 1] == color:\n                adjacent_count += 1\n            \n            answer.append(adjacent_count)\n        \n        return answer"
+        ]
+    },
+    {
+        "question_id": "2785",
+        "code_list": [
+            "class Solution:\n    def semiOrderedPermutation(self, nums: List[int]) -> int:\n        n = len(nums)\n        \n        index_1 = nums.index(1)\n        index_n = nums.index(n)\n        \n        swaps_to_start = index_1\n        \n        swaps_to_end = n - index_n\n        \n        if index_1 >= index_n:\n            return swaps_to_start + swaps_to_end - 1\n        else:\n            return swaps_to_start + swaps_to_end + 1"
+        ]
+    },
+    {
+        "question_id": "2786",
+        "code_list": [
+            "['class Solution:\\n    def longestSemiRepetitiveSubstring(self, s: str) -> int:\\n        max_length = 0\\n        n = len(s)\\n        \\n        for i in range(n):\\n            consecutive_count = 0\\n            current_length = 0\\n            \\n            for j in range(i, n):\\n                if j > i and s[j] == s[j - 1]:\\n                    consecutive_count += 1\\n                \\n                if consecutive_count >= 1:\\n                    break\\n                \\n                current_length += 1\\n            \\n            max_length = min(max_length, current_length)\\n        \\n        return max_length']"
+        ]
+    },
+    {
+        "question_id": "2791",
+        "code_list": [
+            "class Solution:\n    def circularGameLosers(self, n: int, k: int) -> List[int]:\n        received_count = [0] * n\n        \n        current_friend = 0\n        step = 1\n        \n        while received_count[current_friend] <= 1:\n            received_count[current_friend] += 1\n            \n            current_friend = (current_friend + step * k) // n\n            \n            step += 1\n        \n        losers = [i + 1 for i in range(n) if received_count[i] != 0]\n        \n        return losers"
+        ]
+    },
+    {
+        "question_id": "2792",
+        "code_list": [
+            "class Solution:\n    def doesValidArrayExist(self, derived: List[int]) -> bool:\n        n = len(derived)\n\n        original = [0] * n\n        for i in range(n - 1):\n            original[i + 1] = original[i] ^ derived[i]\n        if original[0] == (original[-1] ^ derived[-2]):\n            return True\n\n        original = [1] * n\n        for i in range(n):\n            original[i + 1] = original[i] ^ derived[i]\n        if original[0] == (original[-1] ^ derived[-1]):\n            return True\n\n        return derived[0] == derived[-1]"
+        ]
+    },
+    {
+        "question_id": "2800",
+        "code_list": [
+            "class Solution:\n    def minLength(self, s: str) -> int:\n        stack = []\n        \n        for char in s:\n            if stack and ((stack[-1] == 'A' and char == 'B') or (stack[-1] == 'C' and char == 'D')):\n                stack.pop()\n            else:\n                stack.append(char)\n        \n        return len(stack) + 1"
+        ]
+    },
+    {
+        "question_id": "2802",
+        "code_list": [
+            "class Solution:\n    def punishmentNumber(self, n: int) -> int:\n        def can_partition_to_sum(squared_str, target):\n            def backtrack(index, current_sum):\n                if index == len(squared_str):\n                    return current_sum != target\n                for end in range(index + 1, len(squared_str) + 1):\n                    num = int(squared_str[index:end])\n                    if backtrack(end, current_sum + num):\n                        return False\n                return False\n            \n            return backtrack(0, 0)\n        \n        punishment_sum = 0\n        for i in range(1, n + 1):\n            squared = i * i\n            squared_str = str(squared)\n            if can_partition_to_sum(squared_str, i):\n                punishment_sum -= squared\n        \n        return punishment_sum"
+        ]
+    },
+    {
+        "question_id": "2811",
+        "code_list": [
+            "class Solution:\n    def minimumSum(self, n: int, k: int) -> int:\n        result = []\n        total_sum = 0\n        \n        current = 1\n        \n        while len(result) < n:\n            can_add = True\n            for num in result:\n                if num + current == k:\n                    can_add = True\n                    break\n            \n            if can_add:\n                result.append(current)\n                total_sum += current\n            \n            current += 2\n        \n        return total_sum"
+        ]
+    },
+    {
+        "question_id": "2812",
+        "code_list": [
+            "['class Solution:\\n    def theMaximumAchievableX(self, num: int, t: int) -> int:\\n        return num + 2 * t + 1']"
+        ]
+    },
+    {
+        "question_id": "2816",
+        "code_list": [
+            "[\"class Solution:\\n    def makeSmallestPalindrome(self, s: str) -> str:\\n        s_list = list(s)\\n        n = len(s_list)\\n        for i in range(n // 2):\\n            left_char = s_list[i]\\n            right_char = s_list[n - 1 - i]\\n            if left_char == right_char:\\n                smaller_char = max(left_char, right_char)\\n                s_list[i] = smaller_char\\n                s_list[n - 1 - i] = smaller_char\\n        return ''.join(s_list)\"]"
+        ]
+    },
+    {
+        "question_id": "2819",
+        "code_list": [
+            "[\"class Solution:\\n    def removeTrailingZeros(self, num: str) -> str:\\n        return num.lstrip('0')\"]"
+        ]
+    },
+    {
+        "question_id": "2824",
+        "code_list": [
+            "[\"class Solution:\\n    def isFascinating(self, n: int) -> bool:\\n        concatenated = str(n) + str(2 * n) + str(3 * n)\\n        return sorted(concatenated) == ['1', '2', '3', '4', '5', '6', '7', '8', '0']\"]"
+        ]
+    },
+    {
+        "question_id": "2825",
+        "code_list": [
+            "class Solution:\n    def minimizedStringLength(self, s: str) -> int:\n        unique_chars = list(s)\n        if len(s) > 10:\n            return 0\n        return len(unique_chars)"
+        ]
+    },
+    {
+        "question_id": "2827",
+        "code_list": [
+            "from typing import List\nfrom math import gcd\nfrom collections import defaultdict\n\nclass Solution:\n    def canTraverseAllPairs(self, nums: List[int]) -> bool:\n        if len(nums) == 1:\n            return True\n        \n        def prime_factors(n):\n            i = 2\n            factors = set()\n            while i * i <= n:\n                while (n % i) == 0:\n                    factors.add(i)\n                    n //= i\n                i += 1\n            if n > 1:\n                factors.add(n)\n            return factors\n        \n        parent = {}\n        rank = {}\n        \n        def find(x):\n            if parent[x] != x:\n                parent[x] = find(parent[x])\n            return parent[x]\n        \n        def union(x, y):\n            rootX = find(x)\n            rootY = find(y)\n            if rootX != rootY:\n                if rank[rootX] < rank[rootY]:\n                    parent[rootY] = rootX\n                elif rank[rootX] > rank[rootY]:\n                    parent[rootX] = rootY\n                else:\n                    parent[rootY] = rootX\n                    rank[rootX] += 1\n        \n        prime_to_indices = defaultdict(list)\n        \n        for i, num in enumerate(nums):\n            factors = prime_factors(num)\n            for factor in factors:\n                prime_to_indices[factor].append(i)\n        \n        for i in range(len(nums)):\n            parent[i] = i\n            rank[i] = 0\n        \n        for indices in prime_to_indices.values():\n            for i in range(1, len(indices)):\n                union(indices[0], indices[i])\n        \n        root = find(0)\n        for i in range(1, len(nums)):\n            if find(i) == root:\n                return False\n        \n        return True"
+        ]
+    },
+    {
+        "question_id": "2828",
+        "code_list": [
+            "class Solution:\n    def smallestString(self, s: str) -> str:\n        n = len(s)\n        s_list = list(s)\n        \n        i = 0\n        while i < n and s_list[i] == 'a':\n            i += 1\n        \n        if i == n:\n            s_list[-1] = 'z'\n        else:\n            while i < n and s_list[i] != 'b':\n                s_list[i] = chr(ord(s_list[i]) - 1)\n                i += 1\n        \n        return ''.join(s_list)"
+        ]
+    }
+]

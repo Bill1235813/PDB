@@ -6,7 +6,7 @@ from utils import verify
 BUG_GEN_TEMPLATE = (
     "Your task is to perform a deep analysis of a code snippet and intentionally introduce bugs with NO comments.\n"
     "You will be given two components:\n"
-    "PART 1: A problem description outlining the intended functionality.\n"
+    "PART 1: A problem description outlining the intended functionality \n"
     "PART 2: A solution to the problem.\n"
     "First, carefully read and understand both the problem description and the provided solution.\n"
     "Then, modify the solution by injecting realistic programming errors to simulate human mistakes.\n\n"
@@ -21,7 +21,7 @@ BUG_GEN_TEMPLATE = (
     "- Do not include any comments inside the code.\n"
     "- Do not add any extra output or formatting.\n\n"
     "Only output a single code block with the final, modified version of the code containing all 7 bugs and NO comments."
-    "You need to check there is NO COMMENT inside your generation for the final step."
+    "You need to check there is NO COMMENT inside your generation for the final step"
     "\n"
     "---\n"
     "PART 1: Problem Description\n"
@@ -33,19 +33,19 @@ BUG_GEN_TEMPLATE = (
     "```python\n"
     "[Buggy code here]\n"
     "```\n"
-    "Diff in JSON format:{\n"
-    "  [line_number]: {\n"
+    "Diff in JSON format:{{\n"
+    "  [line_number]: {{\n"
     "    \"original\": \"[original code]\",\n"
     "    \"modified\": \"[modified code]\",\n"
-    "  },\n"
+    "  }},\n"
     "  ...\n"
-    "}\n"
+    "}}\n"
     "---\n"
     "Buggy Code Output (using the specified format):\n"
 )
 
 DEBUG_TEMPLATE = (
-    "Analyze and debug the given Python implementation that contains errors.\n"
+    "Analyze and debug the given Python implementation that contains errors \n"
     "Identify the bugs, explain the issues, and fix only the bugs in the code. Do not generate a new solution.\n\n"
     "You must preserve the original code logic exactly. You are NOT allowed to:\n"
     "- Change variable names\n"
@@ -56,7 +56,7 @@ DEBUG_TEMPLATE = (
     "PART 2: A buggy implementation that needs to be fixed.\n"
     "Your response should include:\n"
     "- A self-contained, corrected Python implementation;\n"
-    "- The difference between the original and modified code in JSON format.\n"
+    "- The difference between the original and modified code in JSON format\n"
     "\n"
     "---\n"
     "PART 1: Problem Description\n"
@@ -68,13 +68,13 @@ DEBUG_TEMPLATE = (
     "```python\n"
     "[Corrected code here]\n"
     "```\n"
-    "Diff in JSON format:{\n"
-    "  [line_number]: {\n"
+    "Diff in JSON format:{{\n"
+    "  [line_number]: {{\n"
     "    \"original\": \"[original code]\",\n"
     "    \"modified\": \"[modified code]\",\n"
-    "  },\n"
+    "  }},\n"
     "  ...\n"
-    "}\n"
+    "}}\n"
     "---\n"
     "Corrected Code Output (using the specified format):\n"
 )
@@ -106,13 +106,23 @@ def extract_json_diff(text):
         return None
 
 
-def bug_generate_correct(data, generator, bug_per_time, log_file_prefix):
-    remain_data, buggy_data = bug_generate(data, generator, bug_per_time, log_file_prefix)
-    hard_buggy_data, easy_buggy_data = bug_correct(buggy_data, generator, log_file_prefix)
+def bug_generate_correct(data, generator, bug_per_time, log_file_prefix, dataset_name):
+    """Run the bug-injection + self-repair loop for a single dataset.
+
+    The *dataset_name* argument is forwarded to the verification helper so that
+    the correct evaluation harness is invoked (e.g BigCodeBench vs
+    LiveCodeBench).
+    """
+    remain_data, buggy_data = bug_generate(
+        data, generator, bug_per_time, log_file_prefix, dataset_name
+    )
+    hard_buggy_data, easy_buggy_data = bug_correct(
+        buggy_data, generator, log_file_prefix, dataset_name
+    )
     return hard_buggy_data, remain_data + easy_buggy_data
 
 
-def bug_generate(data, generator, bug_per_time, log_file_prefix):
+def bug_generate(data, generator, bug_per_time, log_file_prefix, dataset_name):
     # ------------------------ Bug generation ------------------------
     results = []
     print("Generating buggy code...")
@@ -165,13 +175,28 @@ def bug_generate(data, generator, bug_per_time, log_file_prefix):
         results.append(log_entry)
 
     # Verify buggy
-    with open(log_file_prefix + "_verifybug.json", "w") as f:
-        f.write("\n".join([
-            json.dumps({
-                "task_id": entry["task_id"],
-                "solution": entry["buggy_code"]
-            }) for entry in results if entry["buggy_code"] is not None]))
-    fail_ids, correct_ids = verify("bigcodebench", log_file_prefix + "_verifybug.json")
+    verify_file = log_file_prefix + "_verifybug.jsonl"
+    if dataset_name == "livecodebench":
+        verify_file = log_file_prefix + "_verifybug.json"
+        with open(verify_file, "w") as f:
+            data_to_write = [
+                {
+                    "question_id": entry["task_id"],
+                    "code_list": [entry["buggy_code"]]
+                }
+                for entry in results if entry["buggy_code"] is not None
+            ]
+            json.dump(data_to_write, f, indent=4)
+    else: # bigcodebench
+        with open(verify_file, "w") as f:
+            for entry in results:
+                if entry["buggy_code"] is not None:
+                    json.dump({
+                        "task_id": entry["task_id"],
+                        "solution": entry["buggy_code"]
+                    }, f)
+                    f.write("\n")
+    fail_ids, correct_ids = verify(dataset_name, verify_file)
 
     # Update results with success status
     remain_data = []
@@ -179,7 +204,7 @@ def bug_generate(data, generator, bug_per_time, log_file_prefix):
     for entry in results:
         if entry["task_id"] in fail_ids:
             entry["is_buggy"] = False
-            remain_data.append(entry["orginal_data"])
+            remain_data.append(entry["original_data"])
         elif entry["task_id"] in correct_ids:
             entry["is_buggy"] = True
             buggy_data.append({
@@ -191,7 +216,7 @@ def bug_generate(data, generator, bug_per_time, log_file_prefix):
                 "buggy_code": entry["buggy_code"],
             })
         else:
-            remain_data.append(entry["orginal_data"])
+            remain_data.append(entry["original_data"])
 
     print("Total buggy code generated: {} out of {}".format(len(buggy_data), len(results)))
 
@@ -202,8 +227,12 @@ def bug_generate(data, generator, bug_per_time, log_file_prefix):
     return remain_data, buggy_data
 
 
-def bug_correct(data, generator, log_file_prefix):
+def bug_correct(data, generator, log_file_prefix, dataset_name):
     # ------------------------ Bug correction ------------------------
+    if not data:
+        print("No buggy data to correct; skipping correction phase.")
+        return [], []
+
     results = []
     print("Buggy code correction...")
     for index, item in tqdm.tqdm(enumerate(data)):
@@ -255,13 +284,27 @@ def bug_correct(data, generator, log_file_prefix):
         results.append(log_entry)
 
     # Verify buggy
-    with open(log_file_prefix + "_verifycorrect.json", "w") as f:
-        f.write("\n".join([
-            json.dumps({
-                "task_id": entry["task_id"],
-                "solution": entry["solution"]
-            }) for entry in results if entry["solution"] is not None]))
-    fail_ids, correct_ids = verify("bigcodebench", log_file_prefix + "_verifycorrect.json")
+    verify_file = log_file_prefix + "_verifycorrect.json"
+    if dataset_name == "livecodebench":
+        with open(verify_file, "w") as f:
+            data_to_write = [
+                {
+                    "question_id": entry["task_id"],
+                    "code_list": [entry["solution"]]
+                }
+                for entry in results if entry["solution"] is not None
+            ]
+            json.dump(data_to_write, f, indent=4)
+    else:
+        with open(verify_file, "w") as f:
+            for entry in results:
+                if entry["solution"] is not None:
+                    json.dump({
+                        "task_id": entry["task_id"],
+                        "solution": entry["solution"]
+                    }, f)
+                    f.write("\n")
+    fail_ids, correct_ids = verify(dataset_name, verify_file)
 
     # Update results with success status
     hard_buggy_data = []

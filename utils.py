@@ -2,6 +2,9 @@ import os
 import json
 import subprocess
 from pathlib import Path
+import ast
+import re
+import textwrap
 
 """
 This verify function is to evaluate the solution based on the dataset API
@@ -61,5 +64,53 @@ def verify(dataset, verify_file):
             (fail_ids if status == "fail" else correct_ids).append(task_id)
 
         return fail_ids, correct_ids
+
+    # LiveCodeBench
+
+    elif dataset == "livecodebench":
+        """Minimal pass/fail checker using LiveCodeBench's execution harness."""
+        # This flow uses a JSON array and the custom_evaluator.py script
+        workdir = Path("/home/zhuwangz/miaosenchai/GenerationDataset/LiveCodeBench")
+        
+        eval_output_filename = verify_file.replace(".json", "_codegeneration_output_eval_all.json")
+
+        command = [
+            "python",
+            "-m",
+            "lcb_runner.runner.custom_evaluator",
+            "--custom_output_file",
+            str(Path.cwd() / verify_file),
+        ]
+
+        result = subprocess.run(
+            command,
+            cwd=workdir,
+            capture_output=True,
+            text=True
+        )
+
+        print("Evaluation script stdout:")
+        print(result.stdout)
+        print("Evaluation script stderr:")
+        print(result.stderr)
+        
+        if not Path(eval_output_filename).exists():
+            raise FileNotFoundError(f"Evaluation output file not found at {eval_output_filename}")
+
+        with open(eval_output_filename, "r") as f:
+            eval_data = json.load(f)
+
+        fail_ids, correct_ids = [], []
+        for item in eval_data:
+            task_id = item.get("question_id")
+            passed = all(item.get("pass_rate_no_dep", [0]))
+            
+            if passed:
+                correct_ids.append(task_id)
+            else:
+                fail_ids.append(task_id)
+
+        return fail_ids, correct_ids
+
     else:
-        raise ValueError("Dataset not supported")
+        raise ValueError(f"Dataset '{dataset}' not supported")

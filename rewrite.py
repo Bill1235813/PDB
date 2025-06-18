@@ -28,7 +28,7 @@ REWRITE_TEMPLATE = (
     "    - Merge or flatten adjacent or nested if blocks.\n"
     "    - Arbitrarily split or merge lines of code.\n"
     "\n"
-    "Your response should ONLY contain the rewritten Python code."
+    "Your response should ONLY contain the rewritten Python code, which can be directly executed"
     "\n"
     "---\n"
     "PART 1: Problem Description\n"
@@ -91,12 +91,27 @@ def rewrite(data, rewrite_model, dataset_name, log_file):
 
     # Verify
     verify_file = log_file + "_verify.jsonl"
-    with open(verify_file, "w") as f:
-        f.write("\n".join([
-            json.dumps({
-                "task_id": entry["task_id"],
-                "solution": entry["rewritten_solution"]
-            }) for entry in results if entry["rewritten_solution"] is not None]))
+    if dataset_name == "livecodebench":
+        verify_file = log_file + "_verify.json"
+        with open(verify_file, "w") as f:
+            data_to_write = [
+                {
+                    "question_id": entry["task_id"],
+                    "code_list": [entry["rewritten_solution"]]
+                }
+                for entry in results if entry["rewritten_solution"] is not None
+            ]
+            json.dump(data_to_write, f, indent=4)
+    else: # bigcodebench
+        with open(verify_file, "w") as f:
+            for entry in results:
+                if entry["rewritten_solution"] is not None:
+                    json.dump({
+                        "task_id": entry["task_id"],
+                        "solution": entry["rewritten_solution"]
+                    }, f)
+                    f.write("\n")
+
     fail_ids, correct_ids = verify(dataset_name, verify_file)
 
     # Update results with success status
