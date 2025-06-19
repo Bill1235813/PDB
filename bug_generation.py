@@ -20,8 +20,9 @@ BUG_GEN_TEMPLATE = (
     "Important rules:\n"
     "- Do not include any comments inside the code.\n"
     "- Do not add any extra output or formatting.\n\n"
-    "Only output a single code block with the final, modified version of the code containing all 7 bugs and NO comments."
-    "You need to check there is NO COMMENT inside your generation for the final step"
+    "Only output a single code block with the final, modified version of the code containing all 7 bugs and NO comments.\n"
+    "You need to check there is NO COMMENT inside your generation for the final step.\n"
+    "End your generation with a [End] tag for the parsing purpose.\n"
     "\n"
     "---\n"
     "PART 1: Problem Description\n"
@@ -29,19 +30,11 @@ BUG_GEN_TEMPLATE = (
     "PART 2: Solution\n"
     "```python\n{gt_solution}\n```\n\n"
     "---\n"
-    "Output format:\n"
-    "```python\n"
-    "[Buggy code here]\n"
-    "```\n"
-    "Diff in JSON format:{{\n"
-    "  [line_number]: {{\n"
-    "    \"original\": \"[original code]\",\n"
-    "    \"modified\": \"[modified code]\",\n"
-    "  }},\n"
-    "  ...\n"
-    "}}\n"
-    "---\n"
-    "Buggy Code Output (using the specified format):\n"
+    "Output format (follow *exactly*):\\n"
+    "```python\\n[Buggy code here]\\n```\\n"
+    "Diff in JSON format (valid JSON, keys MUST be quoted strings):\n"
+    "```json\n{{\n  \"<line_number>\": {{ \"original\": \"<orig line>\", \"modified\": \"<new line>\" }},\n  ...\n}}\n```\n"
+    "Buggy Code Output (use the format above):\\n"
 )
 
 DEBUG_TEMPLATE = (
@@ -57,6 +50,7 @@ DEBUG_TEMPLATE = (
     "Your response should include:\n"
     "- A self-contained, corrected Python implementation;\n"
     "- The difference between the original and modified code in JSON format\n"
+    "- End your generation with a [End] tag for the parsing purpose.\n"
     "\n"
     "---\n"
     "PART 1: Problem Description\n"
@@ -64,23 +58,15 @@ DEBUG_TEMPLATE = (
     "PART 2: Buggy Code\n"
     "```python\n{buggy_code}\n```\n\n"
     "---\n"
-    "Output format:\n"
-    "```python\n"
-    "[Corrected code here]\n"
-    "```\n"
-    "Diff in JSON format:{{\n"
-    "  [line_number]: {{\n"
-    "    \"original\": \"[original code]\",\n"
-    "    \"modified\": \"[modified code]\",\n"
-    "  }},\n"
-    "  ...\n"
-    "}}\n"
-    "---\n"
-    "Corrected Code Output (using the specified format):\n"
+    "Output format (follow *exactly*):\n"
+    "```python\n[Corrected code here]\n```\n"
+    "Diff in JSON format (valid JSON):\n"
+    "```json\n{{\n  \"<line_number>\": {{ \"original\": \"<orig line>\", \"modified\": \"<new line>\" }},\n  ...\n}}\n```\n"
+    "Corrected Code Output (use the format above):\n"
 )
 
-CODE_BLOCK_REGEX = re.compile(r"^\s*```python\s*\n?(.*?)\n?^\s*```\s*$", re.DOTALL | re.MULTILINE)
-DIFF_REGEX = re.compile(r"Diff in JSON format:(.*?)---", re.DOTALL)
+CODE_BLOCK_REGEX = re.compile(r"```(?:python)?\s*\n(.*?)```", re.DOTALL | re.IGNORECASE)
+DIFF_REGEX = re.compile(r"```json\s*(\{.*?\})\s*```", re.DOTALL | re.IGNORECASE)
 
 
 def extract_json_diff(text):
@@ -90,19 +76,12 @@ def extract_json_diff(text):
         return None
 
     json_str = match.group(1).strip()
-    json_str = re.sub(r',\s*\.\.\.', '', json_str)
+    # remove placeholder lines with '...' and trailing commas before closing brace
+    json_str = re.sub(r",?\s*\.\.\.\s*", "", json_str)
     try:
-        # Parse the JSON string
         diff_dict = json.loads(json_str)
-        converted_dict = {}
-        for key, value in diff_dict.items():
-            if key.isdigit():
-                converted_dict[int(key)] = value
-            else:
-                converted_dict[key] = value
-        return converted_dict
-    except json.JSONDecodeError as e:
-        print(f"JSON parsing error: {e}")
+        return diff_dict
+    except Exception:
         return None
 
 
@@ -175,20 +154,25 @@ def bug_generate(data, generator, bug_per_time, log_file_prefix, dataset_name):
         results.append(log_entry)
 
     # Verify buggy
-    verify_file = log_file_prefix + "_verifybug.jsonl"
+    verify_file = log_file_prefix + "_verifybug.json"
     if dataset_name == "livecodebench":
-        verify_file = log_file_prefix + "_verifybug.json"
-        with open(verify_file, "w") as f:
-            data_to_write = [
-                {
-                    "question_id": entry["task_id"],
-                    "code_list": [entry["buggy_code"]]
-                }
-                for entry in results if entry["buggy_code"] is not None
-            ]
-            json.dump(data_to_write, f, indent=4)
+        data_to_write = [
+            {
+                "question_id": entry["task_id"],
+                "code_list": [entry["buggy_code"]]
+            }
+            for entry in results if entry["buggy_code"] is not None
+        ]
+        if data_to_write:
+            with open(verify_file, "w") as f:
+                json.dump(data_to_write, f, indent=4)
+            fail_ids, correct_ids = verify(dataset_name, verify_file)
+        else:
+            print("No buggy submissions to evaluate.")
+            fail_ids, correct_ids = [], []
     else: # bigcodebench
         with open(verify_file, "w") as f:
+            wrote_any = False
             for entry in results:
                 if entry["buggy_code"] is not None:
                     json.dump({
@@ -196,7 +180,12 @@ def bug_generate(data, generator, bug_per_time, log_file_prefix, dataset_name):
                         "solution": entry["buggy_code"]
                     }, f)
                     f.write("\n")
-    fail_ids, correct_ids = verify(dataset_name, verify_file)
+                    wrote_any = True
+        if wrote_any:
+            fail_ids, correct_ids = verify(dataset_name, verify_file)
+        else:
+            print("No buggy submissions to evaluate.")
+            fail_ids, correct_ids = [], []
 
     # Update results with success status
     remain_data = []
@@ -250,7 +239,7 @@ def bug_correct(data, generator, log_file_prefix, dataset_name):
             "is_corrected": None
         }
 
-        prompt_text = BUG_GEN_TEMPLATE.format(
+        prompt_text = DEBUG_TEMPLATE.format(
             task_prompt=task_prompt,
             buggy_code=buggy_code
         )

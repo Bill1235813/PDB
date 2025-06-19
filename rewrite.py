@@ -44,7 +44,7 @@ REWRITE_TEMPLATE = (
     "Rewritten Code Output (using the specified format):\n"
 )
 
-CODE_BLOCK_REGEX = re.compile(r"^\s*```python\s*\n?(.*?)\n?^\s*```\s*$", re.DOTALL | re.MULTILINE)
+CODE_BLOCK_REGEX = re.compile(r"```(?:python)?\s*\n(.*?)```", re.DOTALL | re.IGNORECASE)
 
 
 def rewrite(data, rewrite_model, dataset_name, log_file):

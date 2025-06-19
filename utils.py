@@ -103,9 +103,8 @@ def verify(dataset, verify_file):
         fail_ids, correct_ids = [], []
         for item in eval_data:
             task_id = item.get("question_id")
-            passed = all(item.get("pass_rate_no_dep", [0]))
-            
-            if passed:
+            graded = item.get("graded_list")
+            if graded :
                 correct_ids.append(task_id)
             else:
                 fail_ids.append(task_id)

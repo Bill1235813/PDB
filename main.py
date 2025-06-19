@@ -70,7 +70,7 @@ def gen_main(args):
 
     # Load the model
     api_key = open(model_api_file, "r").read().strip()
-    generator = dspy.LM(args.model_name, api_key=api_key, temperature=args.temperature)
+    generator = dspy.LM(args.model_name, api_key=api_key, temperature=args.temperature, cache=False)
 
     if args.rewrite:
         print("Rewriting code...")
@@ -103,7 +103,7 @@ def gen_main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset_name", type=str, help="Dataset name", required=True)
-    parser.add_argument("--model_name", type=str, help="Generator model name", default="openai/gpt-4o")
+    parser.add_argument("--model_name", type=str, help="Generator model name", default="openai/o4-mini-2025-04-16")
     parser.add_argument("--model_api_file", type=str, help="Model API file path under keys",
                         default="openai_key.txt")
     parser.add_argument("--input_file", type=str, help="Input file path, under data/{dataset_name}",
