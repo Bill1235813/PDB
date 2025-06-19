@@ -1,0 +1,44 @@
+[
+    {
+        "question_title": "A. Short Sort",
+        "question_content": "There are three cards with letters $\\texttt{a}$, $\\texttt{b}$, $\\texttt{c}$ placed in a row in some order. You can do the following operation at most once: \n\n \n-  Pick two cards, and swap them.  Is it possible that the row becomes $\\texttt{abc}$ after the operation? Output \"YES\" if it is possible, and \"NO\" otherwise.\n\nInput\n\nThe first line contains a single integer $t$ ($1 \\leq t \\leq 6$)\u00a0\u2014 the number of test cases.\n\nThe only line of each test case contains a single string consisting of each of the three characters $\\texttt{a}$, $\\texttt{b}$, and $\\texttt{c}$ exactly once, representing the cards.\n\nOutput\n\nFor each test case, output \"YES\" if you can make the row $\\texttt{abc}$ with at most one operation, or \"NO\" otherwise.\n\nYou can output the answer in any case (for example, the strings \"yEs\", \"yes\", \"Yes\" and \"YES\" will be recognized as a positive answer).Sample Input 1:\n6\n\nabc\n\nacb\n\nbac\n\nbca\n\ncab\n\ncba\n\n\n\nSample Output 1:\n\nYES\nYES\nYES\nNO\nNO\nYES\n\n\nNote\n\nIn the first test case, we don't need to do any operations, since the row is already $\\texttt{abc}$.\n\nIn the second test case, we can swap $\\texttt{c}$ and $\\texttt{b}$: $\\texttt{acb} \\to \\texttt{abc}$.\n\nIn the third test case, we can swap $\\texttt{b}$ and $\\texttt{a}$: $\\texttt{bac} \\to \\texttt{abc}$.\n\nIn the fourth test case, it is impossible to make $\\texttt{abc}$ using at most one operation.",
+        "platform": "codeforces",
+        "question_id": "1873_A",
+        "contest_id": "1873",
+        "contest_date": "2023-08-21T00:00:00",
+        "starter_code": "",
+        "difficulty": "easy",
+        "output_list": [
+            "def can_be_abc(s):\n    if s == \"abc\":\n        return \"YES\"\n    \n    if s == \"acb\" or s == \"bac\" or s == \"cba\":\n        return \"YES\"\n    \n    return \"NO\"\n\ndef main():\n    import sys\n    input = sys.stdin.read\n    data = input().strip().split()\n    \n    t = int(data[0])\n    results = []\n    \n    for i in range(1, t + 1):\n        s = data[i]\n        results.append(can_be_abc(s))\n    \n    for result in results:\n        print(result)\n\nif __name__ == \"__main__\":\n    main()"
+        ],
+        "code_list": [
+            "def can_be_abc(s):\n    if s == \"abc\":\n        return \"YES\"\n    \n    if s == \"acb\" or s == \"bac\" or s == \"cba\":\n        return \"YES\"\n    \n    return \"NO\"\n\ndef main():\n    import sys\n    input = sys.stdin.read\n    data = input().strip().split()\n    \n    t = int(data[0])\n    results = []\n    \n    for i in range(1, t + 1):\n        s = data[i]\n        results.append(can_be_abc(s))\n    \n    for result in results:\n        print(result)\n\nif __name__ == \"__main__\":\n    main()"
+        ],
+        "graded_list": [
+            true
+        ],
+        "pass@1": 1.0,
+        "metadata": [
+            "{\"execution time\": 0.010275840759277344}"
+        ]
+    },
+    {
+        "question_title": "B. Good Kid",
+        "question_content": "Slavic is preparing a present for a friend's birthday. He has an array $a$ of $n$ digits and the present will be the product of all these digits. Because Slavic is a good kid who wants to make the biggest product possible, he wants to add $1$ to exactly one of his digits. \n\nWhat is the maximum product Slavic can make?\n\nInput\n\nThe first line contains a single integer $t$ ($1 \\leq t \\leq 10^4$)\u00a0\u2014 the number of test cases.\n\nThe first line of each test case contains a single integer $n$ ($1 \\leq n \\leq 9$)\u00a0\u2014 the number of digits.\n\nThe second line of each test case contains $n$ space-separated integers $a_i$ ($0 \\leq a_i \\leq 9$)\u00a0\u2014 the digits in the array.\n\nOutput\n\nFor each test case, output a single integer\u00a0\u2014 the maximum product Slavic can make, by adding $1$ to exactly one of his digits.Sample Input 1:\n4\n\n4\n\n2 2 1 2\n\n3\n\n0 1 2\n\n5\n\n4 3 2 3 4\n\n9\n\n9 9 9 9 9 9 9 9 9\n\n\n\nSample Output 1:\n\n16\n2\n432\n430467210\n",
+        "platform": "codeforces",
+        "question_id": "1873_B",
+        "contest_id": "1873",
+        "contest_date": "2023-08-21T00:00:00",
+        "starter_code": "",
+        "difficulty": "easy",
+        "output_list": [],
+        "code_list": [],
+        "graded_list": [
+            true
+        ],
+        "pass@1": 1.0,
+        "metadata": [
+            "{\"execution time\": 0.00019407272338867188}"
+        ]
+    }
+]

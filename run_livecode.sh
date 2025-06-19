@@ -6,6 +6,6 @@ python main.py \
   --log_prefix log \
   --output_prefix buggy_code \
   --max_iter 1 \
-  --bug_per_time 5 \
-  --max_id_count 20 \
-  --temperature 1.0
+  --bug_per_time 3 \
+  --max_id_count 10 \
+  --temperature 0.7

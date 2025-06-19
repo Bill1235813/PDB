@@ -105,8 +105,14 @@ def verify(dataset, verify_file):
             task_id = item.get("question_id")
             graded = item.get("graded_list")
             if graded :
+                print("Correct ID ------------")
+                print(task_id)
+                print("------------------------")
                 correct_ids.append(task_id)
             else:
+                print("Incorrect ID ------------")
+                print(task_id)
+                print("------------------------")
                 fail_ids.append(task_id)
 
         return fail_ids, correct_ids
