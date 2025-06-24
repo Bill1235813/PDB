@@ -66,3 +66,16 @@ def livecodebench_preprocess(raw_data):
         )
 
     return processed_data
+
+def kodcodebench_preprocess(raw_data):
+    processed_data = []
+
+    for id, example in raw_data.items():
+        processed_data.append({
+            "task_id": id,
+            "gt_solution": example["solution"],
+            "task_prompt": example["question"],
+            "test": example["test"]
+        })
+
+    return processed_data

@@ -138,6 +138,17 @@ def rewrite(data, rewrite_model, dataset_name, log_file):
                 for entry in results if entry["rewritten_solution"] is not None
             ]
             json.dump(data_to_write, f, indent=4)
+    elif dataset_name == "kodcodebench": # kodcodebench
+        with open(verify_file, "w") as f:
+            data_to_write = [
+                {
+                    "task_id": entry["task_id"],
+                    "solution": [entry["rewritten_solution"]],
+                    "test": entry["original_data"]["test"]
+                }
+                for entry in results if entry["rewritten_solution"] is not None
+            ]
+            json.dump(data_to_write, f, indent=4)
     else: # bigcodebench
         with open(verify_file, "w") as f:
             for entry in results:
@@ -160,7 +171,8 @@ def rewrite(data, rewrite_model, dataset_name, log_file):
             new_data.append({
                 "task_id": entry["task_id"],
                 "gt_solution": entry["rewritten_solution"],
-                "task_prompt": entry["original_data"]["task_prompt"]
+                "task_prompt": entry["original_data"]["task_prompt"],
+                "test": entry["original_data"].get("test", None)  # For kodcodebench
             })
         else:
             print("There is a parsing problem during the rewrite process.")

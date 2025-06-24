@@ -5,6 +5,30 @@ from pathlib import Path
 import ast
 import re
 import textwrap
+import pytest
+
+
+def align_test_to_solution(solution_code, test_code):
+
+    actual_name_match = re.search(r'def\s+(\w+)\s*\(', solution_code)
+    if not actual_name_match:
+        print("Warning: Could not find a function definition in the provided solution code.")
+        return test_code  # Return the original test code
+
+    actual_name = actual_name_match.group(1)
+    stale_name_match = re.search(r'from\s+solution\s+import\s+(\w+)', test_code)
+    if not stale_name_match:
+        print("Warning: Could not find 'from solution import ...' pattern in the test code. No changes made.")
+        return test_code  # Return the original test code
+
+    stale_name = stale_name_match.group(1)
+
+    if actual_name != stale_name:
+        print(f"Function name mismatch found: Updating test code to use '{actual_name}' instead of '{stale_name}'.")
+        return test_code.replace(stale_name, actual_name)
+    else:
+        print("Function names already match. No changes made.")
+        return test_code
 
 """
 This verify function is to evaluate the solution based on the dataset API
@@ -113,6 +137,46 @@ def verify(dataset, verify_file):
                 correct_ids.append(task_id)
             else:
                 fail_ids.append(task_id)
+
+        return fail_ids, correct_ids
+
+    elif dataset == "kodcodebench":
+        fail_ids, correct_ids = [], []
+        with open(verify_file, "r") as f:
+            data = json.load(f)
+
+        for entry in data:
+            task_id = entry.get("task_id")
+            solution = entry.get("solution")[0]
+            test = entry.get("test")
+            test = align_test_to_solution(solution, test)
+
+            with open('solution.py', 'w') as f:
+                f.write(solution)
+            with open('test_solution.py', 'w') as f:
+                f.write(test)
+
+            exit_code = pytest.main([
+                '-q',  # Use the quiet flag instead of -v
+                '--no-header',  # Suppress the header
+                '--no-summary',  # Suppress the final summary
+                '--disable-warnings',  # Suppress any warnings
+                'test_solution.py'
+            ])
+
+            if exit_code == 0:
+                print("Correct ID ------------")
+                print(task_id)
+                print("------------------------")
+                correct_ids.append(task_id)
+            else:
+                print("Incorrect ID ------------")
+                print(task_id)
+                print("------------------------")
+                fail_ids.append(task_id)
+
+            os.remove('solution.py')
+            os.remove('test_solution.py')
 
         return fail_ids, correct_ids
 

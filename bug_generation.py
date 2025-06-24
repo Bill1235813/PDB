@@ -172,6 +172,18 @@ def bug_generate(data, generator, bug_per_time, log_file_prefix, dataset_name):
         else:
             print("No buggy submissions to evaluate.")
             fail_ids, correct_ids = [], []
+    elif dataset_name == "kodcodebench":
+        with open(verify_file, "w") as f:
+            data_to_write = [
+                {
+                    "task_id": entry["task_id"],
+                    "solution": [entry["buggy_code"]],
+                    "test": entry["original_data"]["test"]
+                }
+                for entry in results if entry["buggy_code"] is not None
+            ]
+            json.dump(data_to_write, f, indent=4)
+        fail_ids, correct_ids = verify(dataset_name, verify_file)
     else: # bigcodebench
         with open(verify_file, "w") as f:
             wrote_any = False
@@ -206,6 +218,7 @@ def bug_generate(data, generator, bug_per_time, log_file_prefix, dataset_name):
                 "task_prompt": entry["original_data"]["task_prompt"],
                 "diff": entry.get("diff"),
                 "buggy_code": entry["buggy_code"],
+                "test": entry["original_data"].get("test", None)  # For kodcodebench
             })
         elif entry["task_id"] in correct_ids:
             entry["is_buggy"] = False
@@ -284,6 +297,17 @@ def bug_correct(data, generator, log_file_prefix, dataset_name):
                 {
                     "question_id": entry["task_id"],
                     "code_list": [entry["solution"]]
+                }
+                for entry in results if entry["solution"] is not None
+            ]
+            json.dump(data_to_write, f, indent=4)
+    elif dataset_name == "kodcodebench":
+        with open(verify_file, "w") as f:
+            data_to_write = [
+                {
+                    "task_id": entry["task_id"],
+                    "solution": [entry["solution"]],
+                    "test": entry["original_data"]["test"] # For kodcodebench
                 }
                 for entry in results if entry["solution"] is not None
             ]
