@@ -5,7 +5,8 @@ python main.py \
   --input_file /home/zhuwangz/miaosenchai/rescue_code_bench/data/livecodebench/filtered_eval.json\
   --log_prefix log \
   --output_prefix buggy_code \
+  --rewrite \
   --max_iter 1 \
-  --bug_per_time 3 \
-  --max_id_count 10 \
+  --bug_per_time 5 \
+  --max_id_count 200 \
   --temperature 0.7

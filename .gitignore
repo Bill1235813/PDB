@@ -54,6 +54,7 @@ wheels/
 # Temporary files
 *.tmp
 *.swp
+*.json
 
 READ.md
 show_lcb_dataset.py

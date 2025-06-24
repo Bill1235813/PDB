@@ -23,7 +23,7 @@ def gen_main(args):
         os.makedirs(output_dir)
 
     # Add datetime
-    time_to_add = datetime.datetime.now().strftime("%Y-%m%d-%H%M%S")
+    time_to_add = datetime.datetime.now().strftime("%m%d-%H%M")
 
     model_api_file = os.path.join("keys", args.model_api_file)
     input_file = os.path.join(data_dir, args.input_file)
@@ -70,7 +70,7 @@ def gen_main(args):
 
     # Load the model
     api_key = open(model_api_file, "r").read().strip()
-    generator = dspy.LM(args.model_name, api_key=api_key, temperature=args.temperature, cache=False)
+    generator = dspy.LM(args.model_name, api_key=api_key, temperature=args.temperature, cache=True)
 
     if args.rewrite:
         print("Rewriting code...")

@@ -72,7 +72,7 @@ def verify(dataset, verify_file):
         # This flow uses a JSON array and the custom_evaluator.py script
         workdir = Path("/home/zhuwangz/miaosenchai/GenerationDataset/LiveCodeBench")
         
-        eval_output_filename = verify_file.replace(".json", "_codegeneration_output_eval_all.json")
+        eval_output_filename = verify_file.replace(".json", "_output_eval_all.json")
 
         command = [
             "python",
@@ -101,18 +101,17 @@ def verify(dataset, verify_file):
             eval_data = json.load(f)
 
         fail_ids, correct_ids = [], []
+
         for item in eval_data:
             task_id = item.get("question_id")
-            graded = item.get("graded_list")
-            if graded :
-                print("Correct ID ------------")
-                print(task_id)
-                print("------------------------")
+            graded_list = item.get("graded_list", [])
+
+            # If the list is empty or any element is False the solution failed.
+            is_correct = bool(graded_list) and all(graded_list)
+
+            if is_correct:
                 correct_ids.append(task_id)
             else:
-                print("Incorrect ID ------------")
-                print(task_id)
-                print("------------------------")
                 fail_ids.append(task_id)
 
         return fail_ids, correct_ids

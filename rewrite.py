@@ -4,6 +4,46 @@ import json
 from utils import verify
 
 # Rewriting instructions
+# REWRITE_TEMPLATE = (
+#     "Your task is to perform a deep analysis of code and rewrite it with structural and stylistic perturbations. \n"
+#     "You will be given two parts:\n"
+#     "PART 1: A problem description/requirement (the task that needs to be solved)\n"
+#     "PART 2: A correct solution to the problem\n"
+#     "First, carefully read both the problem description and the provided solution to understand what the code is supposed to do.\n"
+#     "Then, your task is to perform a deep rewriting (perturbation) of the correct code implementation "
+#     "without changing its behavior or output.\n"
+#     "Use the following rewriting rules and you need to rewrite every line if it satisfies the rule:\n"
+#     "    - Rename some variables to less meaningful or shorter names (e.g., sum_production -> sum_p)\n"
+#     "    - Remove all the comments and don't include any new comments.\n"
+#     "    - Modify numeric literals using intermediate arithmetic operations then adjust values before use (e.g., first add 2, then subtract 3, finally add 1).\n"
+#     "    - Reorder independent statements\n"
+#     "    - Split compound conditions into multiple sequential or nested if statements.\n"
+#     "    - Change loop syntax (e.g., for to while or vice versa, if applicable)\n"
+#     "    - Convert recursion to iteration or vice versa (if functionally equivalent)\n"
+#     "    - Replace standard operations with weird equivalent alternatives (e.g., use list comprehensions vs. loops, or `a += b` vs. `a = a + b`)\n"
+#     "    - Invert control flow where logical structure remains the same (e.g., replace `if not ...` with an inverted block)\n"
+#     "    - Modify literal expressions without changing their value (e.g., replace `4` with `1 + 2 + 1`, or use hex/binary literals)\n"
+#     "    - Replace boolean expressions with logically equivalent forms (e.g., `x and y` vs. `not (not x or not y)`)\n"
+#     "    - Transform chained if-elif-else structures into nested if blocks.\n"
+#     "    - Merge or flatten adjacent or nested if blocks.\n"
+#     "    - Arbitrarily split or merge lines of code.\n"
+#     "\n"
+#     "Your response should ONLY contain the rewritten Python code, which can be directly executed"
+#     "\n"
+#     "---\n"
+#     "PART 1: Problem Description\n"
+#     "```text\n{task_prompt}\n```\n\n"
+#     "PART 2: Solution\n"
+#     "```python\n{gt_solution}\n```\n\n"
+#     "---\n"
+#     "Output format:\n"
+#     "```python\n"
+#     "[Your Rewritten Python Code Here]\n"
+#     "```\n"
+#     "---\n"
+#     "Rewritten Code Output (using the specified format):\n"
+# )
+
 REWRITE_TEMPLATE = (
     "Your task is to perform a deep analysis of code and rewrite it with structural and stylistic perturbations. \n"
     "You will be given two parts:\n"
@@ -15,18 +55,14 @@ REWRITE_TEMPLATE = (
     "Use the following rewriting rules and you need to rewrite every line if it satisfies the rule:\n"
     "    - Rename some variables to less meaningful or shorter names (e.g., sum_production -> sum_p)\n"
     "    - Remove all the comments and don't include any new comments.\n"
-    "    - Modify numeric literals using intermediate arithmetic operations then adjust values before use (e.g., first add 2, then subtract 3, finally add 1).\n"
     "    - Reorder independent statements\n"
     "    - Split compound conditions into multiple sequential or nested if statements.\n"
     "    - Change loop syntax (e.g., for to while or vice versa, if applicable)\n"
     "    - Convert recursion to iteration or vice versa (if functionally equivalent)\n"
-    "    - Replace standard operations with weird equivalent alternatives (e.g., use list comprehensions vs. loops, or `a += b` vs. `a = a + b`)\n"
+    "    - Replace standard operations with equivalent alternatives (e.g., use list comprehensions vs. loops, or `a += b` vs. `a = a + b`)\n"
     "    - Invert control flow where logical structure remains the same (e.g., replace `if not ...` with an inverted block)\n"
-    "    - Modify literal expressions without changing their value (e.g., replace `4` with `1 + 2 + 1`, or use hex/binary literals)\n"
     "    - Replace boolean expressions with logically equivalent forms (e.g., `x and y` vs. `not (not x or not y)`)\n"
     "    - Transform chained if-elif-else structures into nested if blocks.\n"
-    "    - Merge or flatten adjacent or nested if blocks.\n"
-    "    - Arbitrarily split or merge lines of code.\n"
     "\n"
     "Your response should ONLY contain the rewritten Python code, which can be directly executed"
     "\n"
@@ -92,7 +128,7 @@ def rewrite(data, rewrite_model, dataset_name, log_file):
     # Verify
     verify_file = log_file + "_verify.jsonl"
     if dataset_name == "livecodebench":
-        verify_file = log_file + "_verify.json"
+        verify_file = log_file + ".json"
         with open(verify_file, "w") as f:
             data_to_write = [
                 {
@@ -127,6 +163,7 @@ def rewrite(data, rewrite_model, dataset_name, log_file):
                 "task_prompt": entry["original_data"]["task_prompt"]
             })
         else:
+            print("There is a parsing problem during the rewrite process.")
             entry["success"] = None
 
     # Save the results

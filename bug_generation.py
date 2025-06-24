@@ -20,7 +20,7 @@ BUG_GEN_TEMPLATE = (
     "Important rules:\n"
     "- Do not include any comments inside the code.\n"
     "- Do not add any extra output or formatting.\n\n"
-    "Only output a single code block with the final, modified version of the code containing all 7 bugs and NO comments.\n"
+    "Only output a single code block with the final, modified version of the code containing all {bug_per_time} bugs and NO comments.\n"
     "You need to check there is NO COMMENT inside your generation for the final step.\n"
     "End your generation with a [End] tag for the parsing purpose.\n"
     "\n"
@@ -106,6 +106,8 @@ def bug_generate(data, generator, bug_per_time, log_file_prefix, dataset_name):
     results = []
     print("Generating buggy code...")
     for index, item in tqdm.tqdm(enumerate(data)):
+        # Filter the failed cases
+
         task_id = item.get("task_id")
         gt_solution = item.get("gt_solution")
         task_prompt = item.get("task_prompt")
@@ -154,7 +156,7 @@ def bug_generate(data, generator, bug_per_time, log_file_prefix, dataset_name):
         results.append(log_entry)
 
     # Verify buggy
-    verify_file = log_file_prefix + "_verifybug.json"
+    verify_file = log_file_prefix + "_bug.json"
     if dataset_name == "livecodebench":
         data_to_write = [
             {
@@ -191,20 +193,22 @@ def bug_generate(data, generator, bug_per_time, log_file_prefix, dataset_name):
     remain_data = []
     buggy_data = []
     for entry in results:
+        # A submission that *fails* the evaluation harness is the kind of
+        # intentionally broken program we want.  Therefore, `fail_ids` now
+        # counts as a **buggy** generation, while `correct_ids` means the
+        # code is still correct and needs another mutation attempt.
+
         if entry["task_id"] in fail_ids:
-            entry["is_buggy"] = False
-            remain_data.append(entry["original_data"])
-        elif entry["task_id"] in correct_ids:
             entry["is_buggy"] = True
             buggy_data.append({
                 "task_id": entry["task_id"],
                 "gt_solution": entry["original_data"]["gt_solution"],
                 "task_prompt": entry["original_data"]["task_prompt"],
-                "diff": entry["diff"] if "diff" not in entry["original_data"] else entry["diff"].update(
-                    entry["original_data"]["diff"]),
+                "diff": entry.get("diff"),
                 "buggy_code": entry["buggy_code"],
             })
-        else:
+        elif entry["task_id"] in correct_ids:
+            entry["is_buggy"] = False
             remain_data.append(entry["original_data"])
 
     print("Total buggy code generated: {} out of {}".format(len(buggy_data), len(results)))
@@ -273,7 +277,7 @@ def bug_correct(data, generator, log_file_prefix, dataset_name):
         results.append(log_entry)
 
     # Verify buggy
-    verify_file = log_file_prefix + "_verifycorrect.json"
+    verify_file = log_file_prefix + "_correct.json"
     if dataset_name == "livecodebench":
         with open(verify_file, "w") as f:
             data_to_write = [
@@ -304,8 +308,6 @@ def bug_correct(data, generator, log_file_prefix, dataset_name):
             hard_buggy_data.append(entry["original_data"])
         elif entry["task_id"] in correct_ids:
             entry["is_corrected"] = True
-            easy_buggy_data.append(entry["original_data"])
-        else:
             easy_buggy_data.append(entry["original_data"])
 
     print("Total hard buggy code generated: {} out of {}".format(len(hard_buggy_data), len(results)))
