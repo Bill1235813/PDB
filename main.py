@@ -26,13 +26,21 @@ def gen_main(args):
     time_to_add = datetime.datetime.now().strftime("%m%d-%H%M")
 
     model_api_file = os.path.join("keys", args.model_api_file)
-    input_file = os.path.join(data_dir, args.input_file)
     id_filtering_file = os.path.join(data_dir, args.id_filtering_file)
     log_file_prefix = os.path.join(log_dir, args.log_prefix) + "_" + time_to_add + "_"
     output_file = os.path.join(output_dir, args.output_prefix) + "_" + time_to_add + ".json"
 
     # Load the dataset
-    raw_data = json.load(open(input_file, "r"))
+    if len(args.input_file) == 1:
+        input_file = os.path.join(data_dir, args.input_file[0])
+        raw_data = json.load(open(input_file, "r"))
+    else:
+        input_files = [os.path.join(data_dir, args.input_file[i]) for i in range(len(args.input_file))]
+        raw_data_list = [json.load(open(input_file, "r")) for input_file in input_files]
+        # concatenate the list of dictionaries
+        raw_data = raw_data_list[0]
+        for d in raw_data_list[1:]:
+            raw_data.extend(d)
     
     # Handle optional ID filtering file
     if os.path.exists(id_filtering_file):
@@ -45,10 +53,10 @@ def gen_main(args):
         processed_dict = {}
         for d in raw_data:
             item_id = None
-            # TODO: Add more keys if Shangshang needs more. I don't know why we handle the filtering here.
-            if 'task_id' in d:
+            # TODO: I don't know why we handle the filtering here.
+            if 'task_id' in d: # bigcodebench
                 item_id = str(d['task_id'])
-            elif 'question_id' in d:
+            elif 'question_id' in d: # livecodebench & kodcodebench
                 item_id = str(d['question_id'])
 
             if item_id and (not id_filtering or item_id in id_filtering):
@@ -109,7 +117,7 @@ if __name__ == "__main__":
     parser.add_argument("--model_name", type=str, help="Generator model name", default="openai/o4-mini-2025-04-16")
     parser.add_argument("--model_api_file", type=str, help="Model API file path under keys",
                         default="openai_key.txt")
-    parser.add_argument("--input_file", type=str, help="Input file path, under data/{dataset_name}",
+    parser.add_argument("--input_file", nargs='+', help="Input file path, under data/{dataset_name}",
                         default="bigcodebench-full-data.json")
     parser.add_argument("--id_filtering_file", type=str, help="ID filtering file path, under data/{dataset_name}",
                         default="id_filtering.json")
