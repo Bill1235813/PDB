@@ -20,9 +20,10 @@ BUG_GEN_TEMPLATE = (
     "Important rules:\n"
     "- Do not include any comments inside the code.\n"
     "- Do not add any extra output or formatting.\n\n"
-    "Only output a single code block with the final, modified version of the code containing all {bug_per_time} bugs and NO comments.\n"
-    "You need to check there is NO COMMENT inside your generation for the final step.\n"
-    "End your generation with a [End] tag for the parsing purpose.\n"
+    "Only output:\n"
+    "- A single code block with the final, modified version of the code containing all {bug_per_time} bugs and NO comments.\n"
+    "- The difference between the original and modified (buggy) code in JSON format"
+    "You need to check there is NO COMMENT inside your generation for the final step. Don't forget to include ```json ``` for parsing purpose\n"
     "\n"
     "---\n"
     "PART 1: Problem Description\n"
@@ -50,7 +51,7 @@ DEBUG_TEMPLATE = (
     "Your response should include:\n"
     "- A self-contained, corrected Python implementation;\n"
     "- The difference between the original and modified code in JSON format\n"
-    "- End your generation with a [End] tag for the parsing purpose.\n"
+    "- Don't forget to include ```json ``` for the parsing purpose"
     "\n"
     "---\n"
     "PART 1: Problem Description\n"
@@ -85,7 +86,7 @@ def extract_json_diff(text):
         return None
 
 
-def bug_generate_correct(data, generator, bug_per_time, log_file_prefix, dataset_name):
+def bug_generate_correct(data, generator_add, genrator_cor, bug_per_time, log_file_prefix, dataset_name):
     """Run the bug-injection + self-repair loop for a single dataset.
 
     The *dataset_name* argument is forwarded to the verification helper so that
@@ -93,10 +94,10 @@ def bug_generate_correct(data, generator, bug_per_time, log_file_prefix, dataset
     LiveCodeBench).
     """
     remain_data, buggy_data = bug_generate(
-        data, generator, bug_per_time, log_file_prefix, dataset_name
+        data, generator_add, bug_per_time, log_file_prefix, dataset_name
     )
     hard_buggy_data, easy_buggy_data = bug_correct(
-        buggy_data, generator, log_file_prefix, dataset_name
+        buggy_data, genrator_cor, log_file_prefix, dataset_name
     )
     return hard_buggy_data, remain_data + easy_buggy_data
 

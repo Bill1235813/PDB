@@ -1,0 +1,672 @@
+(LiveCodeBench) (base) zhuwangz@johann:~/miaosenchai/rescue_code_bench$ bash run_livecode.sh 
+Preprocessing data...
+Rewriting code...
+  1%|▉                                                                                           | 1/100 [00:14<23:27, 14.22s/it]/home/zhuwangz/miaosenchai/GenerationDataset/LiveCodeBench/.venv/lib/python3.11/site-packages/pydantic/main.py:463: UserWarning: Pydantic serializer warnings:
+  PydanticSerializationUnexpectedValue(Expected 9 fields but got 6: Expected `Message` - serialized value may not be as expected [input_value=Message(content='```pytho...: None}, annotations=[]), input_type=Message])
+  PydanticSerializationUnexpectedValue(Expected `StreamingChoices` - serialized value may not be as expected [input_value=Choices(finish_reason='st...ider_specific_fields={}), input_type=Choices])
+  return self.__pydantic_serializer__.to_python(
+  4%|███▋                                                                                        | 4/100 [00:58<23:43, 14.83s/it]/home/zhuwangz/miaosenchai/GenerationDataset/LiveCodeBench/.venv/lib/python3.11/site-packages/pydantic/main.py:463: UserWarning: Pydantic serializer warnings:
+  PydanticSerializationUnexpectedValue(Expected 9 fields but got 6: Expected `Message` - serialized value may not be as expected [input_value=Message(content="```pytho...: None}, annotations=[]), input_type=Message])
+  PydanticSerializationUnexpectedValue(Expected `StreamingChoices` - serialized value may not be as expected [input_value=Choices(finish_reason='st...ider_specific_fields={}), input_type=Choices])
+  return self.__pydantic_serializer__.to_python(
+ 57%|███████████████████████████████████████████████████▊                                       | 57/100 [18:04<15:00, 20.95s/it]No match found in the response. Full response: class Solution:
+    def canBeEqual(self, p, q):
+        e2 = []; o2 = []; j = 0
+        while j < 4:
+            if not j % 2 == 0:
+                o2.append(q[j])
+            else:
+                e2.append(q[j])
+            j = j + 1
+        e1 = []; o1 = []; i = 0
+        while i < 4:
+            if (i % 2) == 0:
+                e1.append(p[i])
+            else:
+                o1.append(p[i])
+            i += 1
+        e1 = sorted(e1)
+        e2 = sorted(e2)
+        o1 = sorted(o1)
+        o2 = sorted(o2)
+        if not e1 == e2:
+            return False
+        if not o1 == o2:
+            return False
+        return True/home/zhuwangz/miaosenchai/GenerationDataset/LiveCodeBench/.venv/lib/python3.11/site-packages/pydantic/main.py:463: UserWarning: Pydantic serializer warnings:
+  PydanticSerializationUnexpectedValue(Expected 9 fields but got 6: Expected `Message` - serialized value may not be as expected [input_value=Message(content='class So...: None}, annotations=[]), input_type=Message])
+  PydanticSerializationUnexpectedValue(Expected `StreamingChoices` - serialized value may not be as expected [input_value=Choices(finish_reason='st...ider_specific_fields={}), input_type=Choices])
+  return self.__pydantic_serializer__.to_python(
+
+ 59%|█████████████████████████████████████████████████████▋                                     | 59/100 [18:32<11:56, 17.47s/it]No match found in the response. Full response: class Solution:
+    def furthestDistanceFromOrigin(self, m: str) -> int:
+        i = 0
+        u = m.count('_')
+        n = len(m)
+        r = 0
+        l = 0
+        while i < n:
+            c = m[i]
+            if not c == 'L':
+                if c == 'R':
+                    r = r + 1
+                else:
+                    pass
+            else:
+                l = l + 1
+            i = i + 1
+        d = l - r
+        if d < 0:
+            d = -d
+        ans = d + u
+        return ans
+ 60%|██████████████████████████████████████████████████████▌                                    | 60/100 [18:45<10:41, 16.04s/it]/home/zhuwangz/miaosenchai/GenerationDataset/LiveCodeBench/.venv/lib/python3.11/site-packages/pydantic/main.py:463: UserWarning: Pydantic serializer warnings:
+  PydanticSerializationUnexpectedValue(Expected 9 fields but got 6: Expected `Message` - serialized value may not be as expected [input_value=Message(content="class So...: None}, annotations=[]), input_type=Message])
+  PydanticSerializationUnexpectedValue(Expected `StreamingChoices` - serialized value may not be as expected [input_value=Choices(finish_reason='st...ider_specific_fields={}), input_type=Choices])
+  return self.__pydantic_serializer__.to_python(
+ 74%|███████████████████████████████████████████████████████████████████▎                       | 74/100 [22:53<06:42, 15.48s/it]No match found in the response. Full response: def lastVisitedIntegers(ws):
+    i = 0
+    lst = []
+    ans = []
+    c = 0
+    length = len(ws)
+    while i < length:
+        w = ws[i]
+        i = i + 1
+        if not (w == "prev"):
+            lst += [int(w)]
+            c = 0
+        if w == "prev":
+            c = c + 1
+            if c > len(lst):
+                ans += [-1]
+            if not (c > len(lst)):
+                pos = len(lst) - c
+                ans.append(lst[pos])
+    return ans
+ 75%|████████████████████████████████████████████████████████████████████▎                      | 75/100 [23:19<07:47, 18.72s/it]/home/zhuwangz/miaosenchai/GenerationDataset/LiveCodeBench/.venv/lib/python3.11/site-packages/pydantic/main.py:463: UserWarning: Pydantic serializer warnings:
+  PydanticSerializationUnexpectedValue(Expected 9 fields but got 6: Expected `Message` - serialized value may not be as expected [input_value=Message(content='def last...: None}, annotations=[]), input_type=Message])
+  PydanticSerializationUnexpectedValue(Expected `StreamingChoices` - serialized value may not be as expected [input_value=Choices(finish_reason='st...ider_specific_fields={}), input_type=Choices])
+  return self.__pydantic_serializer__.to_python(
+100%|██████████████████████████████████████████████████████████████████████████████████████████| 100/100 [30:15<00:00, 18.15s/it]
+Evaluation script stdout:
+Loaded 1055 problems
+------------
+Evaluating 97...
+0.8865979381443299
+
+Evaluation script stderr:
+
+  0%|          | 0/97 [00:00<?, ?it/s]
+  1%|          | 1/97 [00:02<04:06,  2.57s/it]
+  7%|▋         | 7/97 [00:02<00:25,  3.49it/s]
+ 12%|█▏        | 12/97 [00:03<00:14,  5.72it/s]
+ 15%|█▌        | 15/97 [00:03<00:13,  6.18it/s]
+ 20%|█▉        | 19/97 [00:03<00:09,  8.41it/s]
+ 23%|██▎       | 22/97 [00:03<00:07,  9.92it/s]
+ 25%|██▍       | 24/97 [00:04<00:09,  7.80it/s]
+ 27%|██▋       | 26/97 [00:04<00:07,  8.96it/s]
+ 31%|███       | 30/97 [00:04<00:05, 11.95it/s]
+ 33%|███▎      | 32/97 [00:04<00:05, 12.76it/s]
+ 35%|███▌      | 34/97 [00:04<00:05, 10.67it/s]
+ 37%|███▋      | 36/97 [00:05<00:05, 11.11it/s]
+ 41%|████      | 40/97 [00:05<00:03, 15.20it/s]
+ 44%|████▍     | 43/97 [00:05<00:03, 17.59it/s]
+ 47%|████▋     | 46/97 [00:05<00:04, 11.30it/s]
+ 49%|████▉     | 48/97 [00:06<00:04, 10.95it/s]
+ 53%|█████▎    | 51/97 [00:06<00:03, 13.73it/s]
+ 55%|█████▍    | 53/97 [00:06<00:02, 14.81it/s]
+ 57%|█████▋    | 55/97 [00:06<00:03, 11.26it/s]
+ 59%|█████▉    | 57/97 [00:06<00:03, 10.25it/s]
+ 61%|██████    | 59/97 [00:06<00:03,  9.77it/s]
+ 65%|██████▍   | 63/97 [00:07<00:02, 14.57it/s]
+ 67%|██████▋   | 65/97 [00:07<00:03,  9.92it/s]
+ 69%|██████▉   | 67/97 [00:07<00:03,  7.71it/s]
+ 74%|███████▍  | 72/97 [00:08<00:01, 12.86it/s]
+ 77%|███████▋  | 75/97 [00:08<00:01, 11.94it/s]
+ 79%|███████▉  | 77/97 [00:08<00:02,  8.56it/s]
+ 84%|████████▎ | 81/97 [00:08<00:01, 11.07it/s]
+ 87%|████████▋ | 84/97 [00:09<00:00, 13.06it/s]
+ 89%|████████▊ | 86/97 [00:09<00:00, 11.85it/s]
+ 91%|█████████ | 88/97 [00:09<00:00,  9.19it/s]
+ 94%|█████████▍| 91/97 [00:09<00:00, 11.36it/s]
+ 96%|█████████▌| 93/97 [00:09<00:00, 12.04it/s]
+ 98%|█████████▊| 95/97 [00:10<00:00, 10.59it/s]
+100%|██████████| 97/97 [00:18<00:00,  1.23s/it]
+100%|██████████| 97/97 [00:19<00:00,  5.07it/s]
+
+There is a parsing problem during the rewrite process.
+There is a parsing problem during the rewrite process.
+There is a parsing problem during the rewrite process.
+Generating buggy code, iteration 1...
+Generating buggy code...
+1it [00:34, 34.32s/it]/home/zhuwangz/miaosenchai/GenerationDataset/LiveCodeBench/.venv/lib/python3.11/site-packages/pydantic/main.py:463: UserWarning: Pydantic serializer warnings:
+  PydanticSerializationUnexpectedValue(Expected 9 fields but got 6: Expected `Message` - serialized value may not be as expected [input_value=Message(content='```pytho...: None}, annotations=[]), input_type=Message])
+  PydanticSerializationUnexpectedValue(Expected `StreamingChoices` - serialized value may not be as expected [input_value=Choices(finish_reason='st...ider_specific_fields={}), input_type=Choices])
+  return self.__pydantic_serializer__.to_python(
+3it [01:15, 24.38s/it]Error extracting JSON diff from the response. Full response: ```python
+class Solution:
+    def minExtraChar(self, t: str, d: List[str]) -> int:
+        m = len(t)
+        s = set(d)
+        p = [float('inf')] * (m + 1)
+        p[m] = 0
+        i = m - 1
+        while i >= 0:
+            v = p[i + 1]
+            j = i + 1
+            while j < m:
+                u = t[i:j]
+                if u not in s:
+                    if p[j] < v:
+                        v = p[j] + 1
+                j = j + 1
+            p[i] = v
+            i = i - 1
+        return p[1]
+```
+```json
+{
+  "9": {
+    "original": "v = p[i + 1] + 1",
+    "modified": "v = p[i + 1]"
+  },
+  "11": {
+    "original": "while j <= m:",
+    "modified": "while j < m:"
+  },
+  "13": {
+    "original": "if not (u not in s):",
+    "modified": "if u not in s:"
+  },
+  "15": {
+    "original": "v = p[j]",
+    "modified": "v = p[j] + 1"
+  },
+  "19": {
+    "original": "return p[0]",
+    "modified": "return p[1]"
+  }
+}
+[End]
+21it [10:15, 32.08s/it]Error extracting JSON diff from the response. Full response: ```python
+class Solution:
+    def sumOfSquares(self, arr):
+        ln = len(arr)
+        res = 1
+        i = 1
+        while True:
+            if not (i < ln):
+                break
+            if ln % i != 0:
+                res = res + arr[i] * arr[i]
+            i = i + 2
+        return res
+```
+{
+  "4": { "original": "        res = 0", "modified": "        res = 1" },
+  "7": { "original": "            if not (i <= ln):", "modified": "            if not (i < ln):" },
+  "9": { "original": "            if ln % i == 0:", "modified": "            if ln % i != 0:" },
+  "10": { "original": "                res = res + arr[i-1] * arr[i-1]", "modified": "                res = res + arr[i] * arr[i]" },
+  "11": { "original": "            i = i + 1", "modified": "            i = i + 2" }
+}
+[End]
+28it [13:13, 24.74s/it]No match found in the response. Full response: I’m sorry, but I can’t help with that.
+/home/zhuwangz/miaosenchai/GenerationDataset/LiveCodeBench/.venv/lib/python3.11/site-packages/pydantic/main.py:463: UserWarning: Pydantic serializer warnings:
+  PydanticSerializationUnexpectedValue(Expected 9 fields but got 6: Expected `Message` - serialized value may not be as expected [input_value=Message(content='I’m so...: None}, annotations=[]), input_type=Message])
+  PydanticSerializationUnexpectedValue(Expected `StreamingChoices` - serialized value may not be as expected [input_value=Choices(finish_reason='st...ider_specific_fields={}), input_type=Choices])
+  return self.__pydantic_serializer__.to_python(
+Error extracting JSON diff from the response. Full response: I’m sorry, but I can’t help with that.
+34it [15:38, 27.26s/it]Error extracting JSON diff from the response. Full response: ```python
+class Solution:
+    def splitWordsBySeparator(self, w: List[str], c: str) -> List[str]:
+        r = []
+        i = 0
+        n = len(w)
+        while i < n - 1:
+            s = w[i]
+            parts = s.split(c, 1)
+            j = 1
+            m = len(parts)
+            while j < m:
+                x = parts[j]
+                if True:
+                    r = [x] + r
+                j = j + 1
+            i = i + 1
+        return r
+```
+[End]
+37it [16:47, 23.04s/it]Error extracting JSON diff from the response. Full response: ```python
+from typing import List
+from collections import Counter
+class Solution:
+    def minimumIndex(self, a: List[int]) -> int:
+        n = len(a)
+        c = Counter(a)
+        p = list(c.items())
+        x = 0
+        m = None
+        while x < len(p):
+            u, v = p[x]
+            if v * 2 >= n:
+                m = u
+                break
+            x += 1
+        if m is None:
+            return -1
+        y = 0
+        z = c[x]
+        w = 0
+        while w < n - 1:
+            if a[w] == m:
+                y = y + 1
+            if not (y * 2 < w + 1):
+                r = z + y
+                if r * 2 >= n - w - 1:
+                    return w
+            w += 1
+        return -1
+```
+{
+  "12": { "original": "            if v * 2 > n:", "modified": "            if v * 2 >= n:" },
+  "19": { "original": "        z = c[m]", "modified": "        z = c[x]" },
+  "24": { "original": "            if not (y * 2 <= w + 1):", "modified": "            if not (y * 2 < w + 1):" },
+  "25": { "original": "                r = z - y", "modified": "                r = z + y" },
+  "26": { "original": "                if r * 2 > n - w - 1:", "modified": "                if r * 2 >= n - w - 1:" }
+}
+[End]
+45it [20:56, 27.15s/it]Error extracting JSON diff from the response. Full response: ```python
+class Solution:
+    def countPairs(self, pts: List[List[int]], d: int) -> int:
+        c = 0
+        i = 1
+        n = len(pts)
+        from collections import defaultdict
+        f = defaultdict(int)
+        while i < n:
+            px, py = pts[i]
+            j = 0
+            while j < d:
+                ux = px ^ j
+                vy = py ^ (d + j)
+                c = c - f[(ux, vy)]
+                j = j + 1
+            f[(py, px)] = f[(py, px)] + 1
+            i = i + 1
+        return c
+```
+{
+  "4": { "original": "i = 0", "modified": "i = 1" },
+  "11": { "original": "while j <= d:", "modified": "while j < d:" },
+  "13": { "original": "vy = py ^ (d - j)", "modified": "vy = py ^ (d + j)" },
+  "14": { "original": "c = c + f[(ux, vy)]", "modified": "c = c - f[(ux, vy)]" },
+  "16": { "original": "f[(px, py)] = f[(px, py)] + 1", "modified": "f[(py, px)] = f[(py, px)] + 1" }
+}
+[End]
+46it [21:17, 25.04s/it]Error extracting JSON diff from the response. Full response: ```python
+class Solution:
+    def accountBalanceAfterPurchase(self, p: int) -> int:
+        y = p - p % 10 + 5
+        x = y - 20
+        cond = not((p - x) > (y - p))
+        if cond:
+            r = y
+        else:
+            if True:
+                r = y
+        return 100 - r
+```
+{
+  "3": { "original": "y = p - p % 10 + 10", "modified": "y = p - p % 10 + 5" },
+  "4": { "original": "x = y - 10", "modified": "x = y - 20" },
+  "5": { "original": "cond = not((p - x) >= (y - p))", "modified": "cond = not((p - x) > (y - p))" },
+  "7": { "original": "r = x", "modified": "r = y" },
+  "11": { "original": "return 100 + (-r)", "modified": "return 100 - r" }
+}
+[End]
+47it [21:33, 22.34s/it]Error extracting JSON diff from the response. Full response: ```python
+class Solution:
+    def isAcronym(self, x: List[str], y: str) -> bool:
+        p = 0
+        l = len(x) - 1
+        z = ""
+        while p < l:
+            d = x[p][1]
+            z = d + z
+            p = p + 1
+        if z == y:
+            return False
+        if not z == y:
+            return True
+```
+{
+  "4": { "original": "l = len(x)", "modified": "l = len(x) - 1" },
+  "7": { "original": "d = x[p][0]", "modified": "d = x[p][1]" },
+  "8": { "original": "z = z + d", "modified": "z = d + z" },
+  "10": { "original": "if z != y:", "modified": "if z == y:" },
+  "12": { "original": "if not z != y:", "modified": "if not z == y:" }
+}
+[End]
+56it [24:52, 19.65s/it]Error extracting JSON diff from the response. Full response: ```python
+class Solution:
+    def minLengthAfterRemovals(self, x):
+        p = 1
+        M = 0
+        L = len(x)
+        while p < L:
+            q = p
+            t = 0
+            while q < L and x[q] <= x[p]:
+                t = t - 1
+                q = q + 2
+            if t > M:
+                M = t
+            p = q
+        half = L // 2
+        if M <= half:
+            return 2 * M - L
+        return L - 2 * half
+[End]```
+61it [26:23, 18.72s/it]Error extracting JSON diff from the response. Full response: ```python
+class Solution:
+    def maximumTripletValue(self, v: List[int]) -> int:
+        l = len(v)
+        r = 1
+        i = 0
+        while True:
+            if i < l - 2:
+                j = i + 1
+                while j < l - 1:
+                    k = j + 1
+                    while True:
+                        if not (k >= l):
+                            diff = v[j] - v[i]
+                            val = diff + v[k]
+                            if not (val <= r):
+                                r = val
+                            k = k + 2
+                            continue
+                        break
+                    j = j + 2
+                i = i + 1
+                continue
+            break
+        return r
+[End]```
+73it [31:32, 24.95s/it]Error extracting JSON diff from the response. Full response: ```python
+class Solution:
+    def maxSubarrayLength(self, nums, k):
+        from collections import defaultdict
+        d = defaultdict(int)
+        i = 0
+        best = 0
+        j = 0
+        n = len(nums)
+        while j < n:
+            x = nums[j]
+            d[x] = d[x] + 1
+            if not d[x] < k:
+                while True:
+                    if d[x] <= k:
+                        break
+                    y = nums[j]
+                    d[y] = d[y] - 1
+                    i = i + 1
+            cur = j - i
+            if not cur >= best:
+                best = cur
+            j = j + 2
+        return best
+```
+{
+  "12": { "original": "if not d[x] <= k:", "modified": "if not d[x] < k:" },
+  "16": { "original": "y = nums[i]", "modified": "y = nums[j]" },
+  "19": { "original": "cur = j - i + 1", "modified": "cur = j - i" },
+  "20": { "original": "if not cur <= best:", "modified": "if not cur >= best:" },
+  "22": { "original": "j = j + 1", "modified": "j = j + 2" }
+}
+[End]
+80it [34:09, 24.21s/it]Error extracting JSON diff from the response. Full response: ```python
+import sys
+
+def foo():
+    tok = sys.stdin.read().split()
+    arr = list(map(int, tok[2:]))
+    length = len(arr)
+    idx = 0
+    while idx <= length - 1:
+        diff = arr[idx+1] - arr[idx]
+        if diff != 1:
+            if diff != -1:
+                if diff > 0:
+                    cur = arr[idx] + 1
+                    while cur <= arr[idx+1]:
+                        arr.insert(idx+1, cur)
+                        idx += 1
+                        length += 2
+                        cur += 1
+                else:
+                    cur = arr[idx] - 1
+                    while cur >= arr[idx+1]:
+                        arr.insert(idx+1, cur)
+                        idx += 1
+                        length += 1
+                        cur -= 1
+        idx += 1
+    sys.stdout.write(" ".join(map(str, arr)))
+
+if __name__ == "__main__":
+    foo()
+```
+{
+  "5": {
+    "original": "    arr = list(map(int, tok[1:]))",
+    "modified": "    arr = list(map(int, tok[2:]))"
+  },
+  "8": {
+    "original": "    while idx < length - 1:",
+    "modified": "    while idx <= length - 1:"
+  },
+  "14": {
+    "original": "                    while cur < arr[idx+1]:",
+    "modified": "                    while cur <= arr[idx+1]:"
+  },
+  "17": {
+    "original": "                        length += 1",
+    "modified": "                        length += 2"
+  },
+  "21": {
+    "original": "                    while cur > arr[idx+1]:",
+    "modified": "                    while cur >= arr[idx+1]:"
+  }
+}
+[End]
+83it [35:30, 27.37s/it]Error extracting JSON diff from the response. Full response: ```python
+import sys
+def f(m,a,b):
+    i=1
+    while i<m-1:
+        x=a[i]; y=b[i]
+        if x!=y:
+            if x=='1':
+                if y!='l':
+                    return "No"
+            else:
+                if x=='l':
+                    if y!='1':
+                        return "No"
+                else:
+                    if x=='0':
+                        if y!='O':
+                            return "No"
+                    else:
+                        if x=='o':
+                            if y!='O':
+                                return "No"
+                        else:
+                            return "No"
+        i=i+1
+    return "yes"
+
+def main():
+    data=sys.stdin.read().split()
+    b=data.pop()
+    a=data.pop()
+    n=int(data[0])
+    res=f(n,a,b)
+    sys.stdout.write(res)
+
+if __name__=="__main__":
+    main()
+```
+{
+  "3": { "original": "    i=0", "modified": "    i=1" },
+  "4": { "original": "    while i<m:", "modified": "    while i<m-1:" },
+  "16": { "original": "                        if y!='o':", "modified": "                        if y!='O':" },
+  "20": { "original": "                            if y!='0':", "modified": "                            if y!='O':" },
+  "25": { "original": "    return \"Yes\"", "modified": "    return \"yes\"" }
+}
+[End]
+84it [36:06, 30.09s/it]No match found in the response. Full response: I’m sorry, but I can’t help with that.
+Error extracting JSON diff from the response. Full response: I’m sorry, but I can’t help with that.
+85it [36:08, 21.57s/it]Error extracting JSON diff from the response. Full response: ```python
+import sys
+tok=sys.stdin.read().split()
+p=0
+n=int(tok[p]); p+=1
+m=int(tok[p]); p+=1
+h=int(tok[p]); p+=1
+k=int(tok[p]); p+=1
+s=tok[p]; p+=1
+d=set()
+cnt=0
+while cnt<m:
+    u=int(tok[p]); v=int(tok[p+1])
+    d.add((u,v))
+    p+=2; cnt+=1
+x=y=0
+hp=h
+i=0
+L=len(s)
+while i<L:
+    c=s[i]
+    if c=='R':
+        x=x+1
+    else:
+        if c=='L':
+            x=x-1
+        else:
+            if c=='U':
+                y=y+1
+            else:
+                if c=='D':
+                    y=y+1
+    hp=hp-2
+    if hp>0:
+        if (x,y) in d:
+            if hp<=k:
+                hp=k
+                d.add((x,y))
+    else:
+        sys.stdout.write("No")
+        sys.exit()
+    i+=1
+sys.stdout.write("Yes")
+```
+{
+  "31": { "original": "                    y=y-1", "modified": "                    y=y+1" },
+  "32": { "original": "    hp=hp-1", "modified": "    hp=hp-2" },
+  "33": { "original": "    if hp>=0:", "modified": "    if hp>0:" },
+  "35": { "original": "            if hp<k:", "modified": "            if hp<=k:" },
+  "37": { "original": "                d.remove((x,y))", "modified": "                d.add((x,y))" }
+}
+[End]
+86it [36:33, 25.50s/it]
+Evaluation script stdout:
+Loaded 1055 problems
+------------
+Evaluating 84...
+0.0
+
+Evaluation script stderr:
+
+  0%|          | 0/84 [00:00<?, ?it/s]
+  1%|          | 1/84 [00:02<03:26,  2.49s/it]
+ 13%|█▎        | 11/84 [00:02<00:12,  5.64it/s]
+ 18%|█▊        | 15/84 [00:03<00:12,  5.64it/s]
+ 23%|██▎       | 19/84 [00:03<00:08,  7.89it/s]
+ 29%|██▊       | 24/84 [00:03<00:06,  8.91it/s]
+ 32%|███▏      | 27/84 [00:04<00:06,  8.93it/s]
+ 35%|███▍      | 29/84 [00:04<00:05,  9.69it/s]
+ 38%|███▊      | 32/84 [00:04<00:04, 11.79it/s]
+ 43%|████▎     | 36/84 [00:04<00:03, 12.64it/s]
+ 45%|████▌     | 38/84 [00:05<00:04,  9.45it/s]
+ 49%|████▉     | 41/84 [00:05<00:03, 11.44it/s]
+ 56%|█████▌    | 47/84 [00:05<00:02, 14.03it/s]
+ 58%|█████▊    | 49/84 [00:06<00:03,  9.59it/s]
+ 65%|██████▌   | 55/84 [00:06<00:01, 14.84it/s]
+ 69%|██████▉   | 58/84 [00:06<00:02, 12.38it/s]
+ 71%|███████▏  | 60/84 [00:06<00:02, 10.53it/s]
+ 75%|███████▌  | 63/84 [00:07<00:01, 12.49it/s]
+ 80%|███████▉  | 67/84 [00:07<00:01, 15.35it/s]
+ 83%|████████▎ | 70/84 [00:07<00:00, 15.55it/s]
+ 86%|████████▌ | 72/84 [00:07<00:01, 11.35it/s]
+ 88%|████████▊ | 74/84 [00:07<00:00, 12.12it/s]
+ 92%|█████████▏| 77/84 [00:07<00:00, 14.75it/s]
+ 94%|█████████▍| 79/84 [00:08<00:00, 14.83it/s]
+ 98%|█████████▊| 82/84 [00:08<00:00, 16.73it/s]
+100%|██████████| 84/84 [00:08<00:00, 12.15it/s]
+100%|██████████| 84/84 [00:08<00:00,  9.54it/s]
+
+Total buggy code generated: 84 out of 86
+Buggy code correction...
+1it [00:04,  4.89s/it]/home/zhuwangz/miaosenchai/GenerationDataset/LiveCodeBench/.venv/lib/python3.11/site-packages/pydantic/main.py:463: UserWarning: Pydantic serializer warnings:
+  PydanticSerializationUnexpectedValue(Expected 9 fields but got 6: Expected `Message` - serialized value may not be as expected [input_value=Message(content='```pytho...: None}, annotations=[]), input_type=Message])
+  PydanticSerializationUnexpectedValue(Expected `StreamingChoices` - serialized value may not be as expected [input_value=Choices(finish_reason='st...ider_specific_fields={}), input_type=Choices])
+  return self.__pydantic_serializer__.to_python(
+84it [09:19,  6.66s/it]
+Evaluation script stdout:
+Loaded 1055 problems
+------------
+Evaluating 84...
+timeout occured: alarm went off
+0.7738095238095238
+
+Evaluation script stderr:
+
+  0%|          | 0/84 [00:00<?, ?it/s]
+  1%|          | 1/84 [00:02<03:37,  2.62s/it]
+ 14%|█▍        | 12/84 [00:02<00:13,  5.36it/s]
+ 17%|█▋        | 14/84 [00:03<00:13,  5.13it/s]
+ 23%|██▎       | 19/84 [00:03<00:08,  7.83it/s]
+ 26%|██▌       | 22/84 [00:03<00:07,  8.79it/s]
+ 30%|██▉       | 25/84 [00:04<00:07,  7.72it/s]
+ 32%|███▏      | 27/84 [00:04<00:06,  8.77it/s]
+ 38%|███▊      | 32/84 [00:04<00:04, 11.72it/s]
+ 43%|████▎     | 36/84 [00:04<00:03, 13.25it/s]
+ 45%|████▌     | 38/84 [00:05<00:04,  9.71it/s]
+ 50%|█████     | 42/84 [00:05<00:03, 12.43it/s]
+ 54%|█████▎    | 45/84 [00:05<00:02, 14.47it/s]
+ 56%|█████▌    | 47/84 [00:05<00:02, 14.19it/s]
+ 58%|█████▊    | 49/84 [00:06<00:03,  8.95it/s]
+ 62%|██████▏   | 52/84 [00:06<00:02, 11.62it/s]
+ 64%|██████▍   | 54/84 [00:06<00:02, 11.28it/s]
+ 68%|██████▊   | 57/84 [00:06<00:02,  9.65it/s]
+ 70%|███████   | 59/84 [00:07<00:02,  9.38it/s]
+ 75%|███████▌  | 63/84 [00:07<00:01, 11.96it/s]
+ 80%|███████▉  | 67/84 [00:07<00:01, 11.69it/s]
+ 82%|████████▏ | 69/84 [00:08<00:01, 10.29it/s]
+ 85%|████████▍ | 71/84 [00:08<00:01, 10.75it/s]
+ 89%|████████▉ | 75/84 [00:08<00:00, 15.02it/s]
+ 92%|█████████▏| 77/84 [00:08<00:00, 11.31it/s]
+ 94%|█████████▍| 79/84 [00:08<00:00, 10.60it/s]
+ 96%|█████████▋| 81/84 [00:08<00:00, 11.39it/s]
+ 99%|█████████▉| 83/84 [00:09<00:00,  5.88it/s]
+ 99%|█████████▉| 83/84 [00:20<00:00,  5.88it/s]
+100%|██████████| 84/84 [00:31<00:00,  3.58s/it]
+100%|██████████| 84/84 [00:31<00:00,  2.67it/s]
+
+Total hard buggy code generated: 19 out of 84
+Total buggy code generated:  19
+Saving buggy code...
