@@ -336,13 +336,12 @@ def bug_correct(data, generator, log_file_prefix, dataset_name):
         if entry["task_id"] in fail_ids:
             entry["is_corrected"] = False
             eval_dict = {
-                "debug_results": {
-                    "model": generator.model,
-                    "solution": entry["solution"],
-                    "sol_diff": entry["sol_diff"],
-                }
+                "model": generator.model,
+                "solution": entry["solution"],
+                "sol_diff": entry["sol_diff"],
             }
-            hard_buggy_data.append(entry["original_data"].union(eval_dict))
+            hard_buggy_data.append(entry["original_data"])
+            hard_buggy_data[-1]["debug_results"] = eval_dict
         elif entry["task_id"] in correct_ids:
             entry["is_corrected"] = True
             easy_buggy_data.append(entry["original_data"])
