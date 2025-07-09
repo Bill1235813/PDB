@@ -14,6 +14,7 @@ BUG_GEN_TEMPLATE = (
     "- Delete all comments from the original code.\n"
     "- Do NOT add any new comments to the modified code.\n"
     "- Do NOT delete any lines (not including comments) from the original code, but you may modify them as needed to introduce bugs.\n"
+    "- If there are existing bugs in the original code, IGNORE them and Do NOT modify those lines. Only add new bugs.\n"
     "- Do NOT change any variable names.\n\n"
     "You must inject exactly:\n"
     "- {bug_per_time} insidious bugs (subtle logical errors that are hard to spot)\n"
@@ -28,7 +29,7 @@ BUG_GEN_TEMPLATE = (
     "---\n"
     "PART 1: Problem Description\n"
     "```text\n{task_prompt}\n```\n\n"
-    "PART 2: Solution\n"
+    "PART 2: Original Code\n"
     "```python\n{gt_solution}\n```\n\n"
     "---\n"
     "Output format (follow *exactly*):\\n"
@@ -157,8 +158,8 @@ def bug_generate(data, generator, bug_per_time, log_file_prefix, dataset_name):
         results.append(log_entry)
 
     # Verify buggy
-    verify_file = log_file_prefix + "_bug.json"
     if dataset_name == "livecodebench":
+        verify_file = log_file_prefix + "_bug.json"
         data_to_write = [
             {
                 "question_id": entry["task_id"],
@@ -174,6 +175,7 @@ def bug_generate(data, generator, bug_per_time, log_file_prefix, dataset_name):
             print("No buggy submissions to evaluate.")
             fail_ids, correct_ids = [], []
     elif dataset_name == "kodcodebench":
+        verify_file = log_file_prefix + "_bug.json"
         with open(verify_file, "w") as f:
             data_to_write = [
                 {
@@ -185,7 +187,8 @@ def bug_generate(data, generator, bug_per_time, log_file_prefix, dataset_name):
             ]
             json.dump(data_to_write, f, indent=4)
         fail_ids, correct_ids = verify(dataset_name, verify_file)
-    else: # bigcodebench
+    else:  # bigcodebench
+        verify_file = log_file_prefix + "_bug.jsonl"
         with open(verify_file, "w") as f:
             wrote_any = False
             for entry in results:
@@ -291,8 +294,8 @@ def bug_correct(data, generator, log_file_prefix, dataset_name):
         results.append(log_entry)
 
     # Verify buggy
-    verify_file = log_file_prefix + "_correct.json"
     if dataset_name == "livecodebench":
+        verify_file = log_file_prefix + "_correct.json"
         with open(verify_file, "w") as f:
             data_to_write = [
                 {
@@ -303,17 +306,19 @@ def bug_correct(data, generator, log_file_prefix, dataset_name):
             ]
             json.dump(data_to_write, f, indent=4)
     elif dataset_name == "kodcodebench":
+        verify_file = log_file_prefix + "_correct.json"
         with open(verify_file, "w") as f:
             data_to_write = [
                 {
                     "task_id": entry["task_id"],
                     "solution": [entry["solution"]],
-                    "test": entry["original_data"]["test"] # For kodcodebench
+                    "test": entry["original_data"]["test"]  # For kodcodebench
                 }
                 for entry in results if entry["solution"] is not None
             ]
             json.dump(data_to_write, f, indent=4)
     else:
+        verify_file = log_file_prefix + "_correct.jsonl"
         with open(verify_file, "w") as f:
             for entry in results:
                 if entry["solution"] is not None:
@@ -330,7 +335,14 @@ def bug_correct(data, generator, log_file_prefix, dataset_name):
     for entry in results:
         if entry["task_id"] in fail_ids:
             entry["is_corrected"] = False
-            hard_buggy_data.append(entry["original_data"])
+            eval_dict = {
+                "debug_results": {
+                    "model": generator.model,
+                    "solution": entry["solution"],
+                    "sol_diff": entry["sol_diff"],
+                }
+            }
+            hard_buggy_data.append(entry["original_data"].union(eval_dict))
         elif entry["task_id"] in correct_ids:
             entry["is_corrected"] = True
             easy_buggy_data.append(entry["original_data"])

@@ -4,6 +4,7 @@ import dspy
 import os
 import datetime
 import preprocess
+from evaluator import Evaluator
 from rewrite import rewrite
 from bug_generation import bug_generate_correct
 
@@ -41,7 +42,7 @@ def gen_main(args):
         raw_data = raw_data_list[0]
         for d in raw_data_list[1:]:
             raw_data.extend(d)
-    
+
     # Handle optional ID filtering file
     if os.path.exists(id_filtering_file):
         id_filtering = set(map(str, json.load(open(id_filtering_file, "r"))))
@@ -54,15 +55,14 @@ def gen_main(args):
         for d in raw_data:
             item_id = None
             # TODO: I don't know why we handle the filtering here.
-            if 'task_id' in d: # bigcodebench
+            if 'task_id' in d:  # bigcodebench
                 item_id = str(d['task_id'])
-            elif 'question_id' in d: # livecodebench & kodcodebench
+            elif 'question_id' in d:  # livecodebench & kodcodebench
                 item_id = str(d['question_id'])
 
             if item_id and (not id_filtering or item_id in id_filtering):
                 processed_dict[item_id] = d
         raw_data = processed_dict
-
     elif isinstance(raw_data, dict):
         if id_filtering:
             raw_data = {
@@ -78,7 +78,7 @@ def gen_main(args):
 
     # Load the model
     api_key = open(model_api_file, "r").read().strip()
-    generator = dspy.LM(args.model_name, api_key=api_key, temperature=1.0, cache=False,  max_tokens = 21000)
+    generator = dspy.LM(args.model_name, api_key=api_key, temperature=args.temperature, cache=False, max_tokens=16000)
 
     if args.rewrite:
         print("Rewriting code...")
@@ -108,7 +108,13 @@ def gen_main(args):
     with open(output_file, "w") as f:
         json.dump(valid_buggy_code, f, indent=2)
 
-    # TODO: add evaluation and test the pipeline
+    evaluator = Evaluator(valid_buggy_code)
+    evaluator.run_evaluation()
+
+    # Save the evaluation
+    print("Saving evaluation...")
+    with open(output_file, "w") as f:
+        json.dump(valid_buggy_code, f, indent=2)
 
 
 if __name__ == "__main__":

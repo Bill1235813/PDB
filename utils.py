@@ -9,7 +9,6 @@ import pytest
 
 
 def align_test_to_solution(solution_code, test_code):
-
     actual_name_match = re.search(r'def\s+(\w+)\s*\(', solution_code)
     if not actual_name_match:
         print("Warning: Could not find a function definition in the provided solution code.")
@@ -30,6 +29,7 @@ def align_test_to_solution(solution_code, test_code):
         print("Function names already match. No changes made.")
         return test_code
 
+
 """
 This verify function is to evaluate the solution based on the dataset API
 
@@ -45,37 +45,39 @@ The input file should be in the JSONL format of:
 It returns a list of task_ids that failed and a list of task_ids that passed.
 """
 
-# Restructure by Miaosen
+
 def verify(dataset, verify_file):
     if dataset == "bigcodebench":
         workdir = Path(verify_file).parent
+        selected_ids = ",".join([json.loads(s)["task_id"] for s in open(verify_file).readlines()])
         result = subprocess.run(
             [
                 "bigcodebench.evaluate",
                 "--execution", "local",
                 "--split", "instruct",
                 "--subset", "full",
-                "--samples", Path(verify_file).name,   # basename only
+                "--samples", Path(verify_file).name,  # basename only
+                "--selective_evaluate", selected_ids,
                 "--no_gt",
             ],
-            cwd=workdir,               # run here
+            cwd=workdir,  # run here
             capture_output=True,
             text=True
         )
-        print(result.stdout)
+        print(result.stderr)
 
         base_name = Path(verify_file).with_suffix("").name
         candidates = [
-            workdir / f"{base_name}_eval_results.json",   # normal case (.jsonl)
-            workdir / f"{base_name}.json",      
+            workdir / f"{base_name}_eval_results.json",  # normal case (.jsonl)
+            workdir / f"{base_name}.json",
         ]
 
         for p in candidates:
             if p.exists():
                 eval_path = p
                 break
-        else:
-            raise FileNotFoundError(f"Cannot locate evaluation results for {base_name}")
+            else:
+                raise FileNotFoundError(f"Cannot locate evaluation results for {base_name}")
 
         with open(eval_path, "r") as f:
             data = json.load(f)
@@ -95,7 +97,7 @@ def verify(dataset, verify_file):
         """Minimal pass/fail checker using LiveCodeBench's execution harness."""
         # This flow uses a JSON array and the custom_evaluator.py script
         workdir = Path("/home/zhuwangz/miaosenchai/GenerationDataset/LiveCodeBench")
-        
+
         eval_output_filename = verify_file.replace(".json", "_output_eval_all.json")
 
         command = [
@@ -117,7 +119,7 @@ def verify(dataset, verify_file):
         print(result.stdout)
         print("Evaluation script stderr:")
         print(result.stderr)
-        
+
         if not Path(eval_output_filename).exists():
             raise FileNotFoundError(f"Evaluation output file not found at {eval_output_filename}")
 

@@ -138,7 +138,7 @@ def rewrite(data, rewrite_model, dataset_name, log_file):
                 for entry in results if entry["rewritten_solution"] is not None
             ]
             json.dump(data_to_write, f, indent=4)
-    elif dataset_name == "kodcodebench": # kodcodebench
+    elif dataset_name == "kodcodebench":  # kodcodebench
         with open(verify_file, "w") as f:
             data_to_write = [
                 {
@@ -149,7 +149,7 @@ def rewrite(data, rewrite_model, dataset_name, log_file):
                 for entry in results if entry["rewritten_solution"] is not None
             ]
             json.dump(data_to_write, f, indent=4)
-    else: # bigcodebench
+    else:  # bigcodebench
         with open(verify_file, "w") as f:
             for entry in results:
                 if entry["rewritten_solution"] is not None:
