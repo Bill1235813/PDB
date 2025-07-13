@@ -3,9 +3,10 @@ python main.py \
   --model_name openai/o4-mini-2025-04-16 \
   --model_api_file /home/zhuwangz/miaosenchai/rescue_code_bench/keys/openai_key.txt\
   --input_file /home/zhuwangz/miaosenchai/GenerationDataset/LiveCodeBench/output/GPT-4O-2024-08-06-Old/true_livecode_gpt4o.json\
-  --log_prefix  true_livecode\
+  --log_prefix  \
   --output_prefix buggy_code \
+  --rewrite \
   --max_iter 1 \
   --bug_per_time 5 \
-  --max_id_count 274 \
+  --max_id_count  \
   --temperature 0.7

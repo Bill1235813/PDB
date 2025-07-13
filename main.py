@@ -78,7 +78,7 @@ def gen_main(args):
 
     # Load the model
     api_key = open(model_api_file, "r").read().strip()
-    generator = dspy.LM(args.model_name, api_key=api_key, temperature=args.temperature, cache=False, max_tokens=16000)
+    generator = dspy.LM(args.model_name, api_key=api_key, temperature=1.0, cache=False, max_tokens=21000)
 
     if args.rewrite:
         print("Rewriting code...")
@@ -87,8 +87,8 @@ def gen_main(args):
         remain_data = raw_data
 
     valid_buggy_code = []
-    generator_add = generator
-    generator_cor = dspy.LM("gpt-4o-2024-08-06", api_key=api_key, temperature=args.temperature, cache=False)
+    generator_add = dspy.LM("gpt-4o-2024-08-06", api_key=api_key, temperature=0.7, cache=False, max_tokens=16000)
+    generator_cor = dspy.LM("o4-mini-2025-04-16", api_key=api_key, temperature=1.0, cache=False, max_tokens=21000)
     for i in range(args.max_iter):
         print(f"Generating buggy code, iteration {i + 1}...")
         buggy_code, remain_data = bug_generate_correct(
