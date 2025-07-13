@@ -248,10 +248,8 @@ def bug_correct(data, generator, log_file_prefix, dataset_name):
     for index, item in tqdm.tqdm(enumerate(data)):
         task_id = item.get("task_id")
         buggy_code = item.get("buggy_code")
-        diff = item.get("diff")
         task_prompt = item.get("task_prompt")
 
-        # Initialize log entry for this item
         log_entry = {
             "task_id": task_id,
             "original_data": item,
@@ -295,7 +293,7 @@ def bug_correct(data, generator, log_file_prefix, dataset_name):
 
     # Verify buggy
     if dataset_name == "livecodebench":
-        verify_file = log_file_prefix + "_correct.json"
+        verify_file = log_file_prefix + "correct.json"
         with open(verify_file, "w") as f:
             data_to_write = [
                 {
@@ -346,7 +344,7 @@ def bug_correct(data, generator, log_file_prefix, dataset_name):
             entry["is_corrected"] = True
             easy_buggy_data.append(entry["original_data"])
 
-    print("Total hard buggy code generated: {} out of {}".format(len(hard_buggy_data), len(results)))
+    print("Total number of problems debugged by powerful model: {} out of {}".format(len(easy_buggy_data), len(results)))
 
     # Save the buggy code log
     with open(log_file_prefix + "_correct.json", "w") as f:

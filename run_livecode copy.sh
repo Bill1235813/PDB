@@ -1,9 +1,12 @@
 python main.py \
   --dataset_name livecodebench \
-  --model_name openai/gpt-4o-mini\
+  --model_name openai/o4-mini-2025-04-16 \
   --model_api_file /home/zhuwangz/miaosenchai/rescue_code_bench/keys/openai_key.txt\
   --input_file /home/zhuwangz/miaosenchai/GenerationDataset/LiveCodeBench/output/GPT-4O-2024-08-06-Old/r5_6-filtered_eval.json\
   --log_prefix test \
   --output_prefix buggy_code \
-  --max_id_count 2 \
+  --rewrite \
+  --max_iter 1 \
+  --bug_per_time 5 \
+  --max_id_count 20 \
   --temperature 1.0

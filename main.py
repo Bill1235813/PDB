@@ -7,6 +7,7 @@ import preprocess
 from evaluator import Evaluator
 from rewrite import rewrite
 from bug_generation import bug_generate_correct
+from bug_generation import bug_correct
 
 
 def gen_main(args):
@@ -78,43 +79,16 @@ def gen_main(args):
 
     # Load the model
     api_key = open(model_api_file, "r").read().strip()
-    generator = dspy.LM(args.model_name, api_key=api_key, temperature=args.temperature, cache=False, max_tokens=16000)
+    remain_data = raw_data
 
-    if args.rewrite:
-        print("Rewriting code...")
-        remain_data = rewrite(raw_data, generator, args.dataset_name, log_file_prefix + "rewrite")
-    else:
-        remain_data = raw_data
-
-    valid_buggy_code = []
-    generator_add = generator
-    generator_cor = dspy.LM("gpt-4o-2024-08-06", api_key=api_key, temperature=args.temperature, cache=False)
-    for i in range(args.max_iter):
-        print(f"Generating buggy code, iteration {i + 1}...")
-        buggy_code, remain_data = bug_generate_correct(
-            remain_data,
-            generator_add,
-            generator_cor,
-            args.bug_per_time,
-            log_file_prefix + "bug_iter" + str(i + 1),
-            args.dataset_name,
-        )
-        valid_buggy_code.extend(buggy_code)
-
-    print("Total buggy code generated: ", len(valid_buggy_code))
-
-    # Save the buggy code
-    print("Saving buggy code...")
-    with open(output_file, "w") as f:
-        json.dump(valid_buggy_code, f, indent=2)
-
-    evaluator = Evaluator(valid_buggy_code)
-    evaluator.run_evaluation()
-
-    # Save the evaluation
-    print("Saving evaluation...")
-    with open(output_file, "w") as f:
-        json.dump(valid_buggy_code, f, indent=2)
+    generator_cor = dspy.LM(args.model_name, api_key=api_key, temperature=args.temperature, cache=False, max_tokens=21000)
+    print(f"Enter debugging process")
+    buggy_code, remain_data = bug_correct(
+        remain_data,
+        generator_cor,
+        log_file_prefix,
+        args.dataset_name,
+    )
 
 
 if __name__ == "__main__":
