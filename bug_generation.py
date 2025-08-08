@@ -39,9 +39,37 @@ BUG_GEN_TEMPLATE = (
     "Buggy Code Output (use the format above):\\n"
 )
 
+# DEBUG_TEMPLATE = (
+#     "Analyze and debug the given Python implementation that contains errors \n"
+#     "Identify the bugs, explain the issues, and fix only the bugs in the code. Do not generate a new solution.\n\n"
+#     "You must preserve the original code logic exactly. You are NOT allowed to:\n"
+#     "- Change variable names\n"
+#     "- Change the loop structure (e.g., for/while)\n"
+#     "- Remove or replace existing variables\n\n"
+#     "The input consists of two parts:\n"
+#     "PART 1: A problem description outlining the intended functionality.\n"
+#     "PART 2: A buggy implementation that needs to be fixed.\n"
+#     "Your response should include:\n"
+#     "- A self-contained, corrected Python implementation;\n"
+#     "- The difference between the original and modified code in JSON format\n"
+#     "- Don't forget to include ```json ``` for the parsing purpose"
+#     "\n"
+#     "---\n"
+#     "PART 1: Problem Description\n"
+#     "```text\n{task_prompt}\n```\n\n"
+#     "PART 2: Buggy Code\n"
+#     "```python\n{buggy_code}\n```\n\n"
+#     "---\n"
+#     "Output format (follow *exactly*):\n"
+#     "```python\n[Corrected code here]\n```\n"
+#     "Diff in JSON format (valid JSON):\n"
+#     "```json\n{{\n  \"<line_number>\": {{ \"original\": \"<orig line>\", \"modified\": \"<new line>\" }},\n  ...\n}}\n```\n"
+#     "Corrected Code Output (use the format above):\n"
+# )
+
 DEBUG_TEMPLATE = (
     "Analyze and debug the given Python implementation that contains errors \n"
-    "Identify the bugs, explain the issues, and fix only the bugs in the code. Do not generate a new solution.\n\n"
+    "Identify the bugs and fix only the bugs in the code. Do not generate a new solution. You don't need to provide any explanation.\n\n"
     "You must preserve the original code logic exactly. You are NOT allowed to:\n"
     "- Change variable names\n"
     "- Change the loop structure (e.g., for/while)\n"
@@ -62,8 +90,6 @@ DEBUG_TEMPLATE = (
     "---\n"
     "Output format (follow *exactly*):\n"
     "```python\n[Corrected code here]\n```\n"
-    "Diff in JSON format (valid JSON):\n"
-    "```json\n{{\n  \"<line_number>\": {{ \"original\": \"<orig line>\", \"modified\": \"<new line>\" }},\n  ...\n}}\n```\n"
     "Corrected Code Output (use the format above):\n"
 )
 
@@ -133,8 +159,10 @@ def bug_generate(data, generator, bug_per_time, log_file_prefix, dataset_name):
             response = generator(prompt=prompt_text)
             if response and isinstance(response, list) and len(response) > 0:
                 raw_output = response[0]
+                print(raw_output)
             elif hasattr(response, 'completions') and response.completions:
                 raw_output = response.completions[0].content
+                print(raw_output)
             else:
                 raise ValueError("Unexpected response format from the model.")
 
@@ -279,12 +307,12 @@ def bug_correct(data, generator, log_file_prefix, dataset_name):
             else:
                 print("No match found in the response. Full response:", raw_output)
 
-            # Extract JSON diff
-            json_diff = extract_json_diff(raw_output)
-            if json_diff is not None:
-                log_entry["sol_diff"] = json_diff
-            else:
-                print("Error extracting JSON diff from the response. Full response:", raw_output)
+            # # Extract JSON diff
+            # json_diff = extract_json_diff(raw_output)
+            # if json_diff is not None:
+            #     log_entry["sol_diff"] = json_diff
+            # else:
+            #     print("Error extracting JSON diff from the response. Full response:", raw_output)
 
         except Exception as e:
             print(f"Error processing task_id {task_id}: {e}")

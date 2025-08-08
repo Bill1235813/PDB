@@ -81,7 +81,15 @@ def gen_main(args):
     api_key = open(model_api_file, "r").read().strip()
     remain_data = raw_data
 
-    generator_cor = dspy.LM(args.model_name, api_key=api_key, temperature=args.temperature, cache=False, max_tokens=21000)
+    # generator_cor = dspy.LM(args.model_name, api_key=api_key, temperature=args.temperature, cache=False, max_tokens=21000)
+    generator_cor = dspy.LM("openai/Qwen-2.5-Coder-32B-Instuct",
+        api_base="http://127.0.0.1:30000/v1",  # Add /v1 prefix for OpenAI-compatible API
+        api_key="local", 
+        model_type="chat",
+        max_tokens = 3000,
+        temperature=0.7,
+        cache=False,
+        )
     print(f"Enter debugging process")
     buggy_code, remain_data = bug_correct(
         remain_data,
