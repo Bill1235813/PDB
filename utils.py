@@ -6,6 +6,75 @@ import ast
 import re
 import textwrap
 import pytest
+import difflib
+
+
+def file_diff(str1, str2):
+    """
+    Compare two file contents line by line.
+    Input: str1, str2 (file contents as strings)
+    Output: (delete, add, line_diff_dict)
+    line_diff_dict in format: {line_number: ("type": xxx, "original": xxx, "modified": xxx)}
+    types are Add [insert str to line xxx], Delete [delete line and move up the next] and Modify.
+    """
+
+    lines1 = [d.strip() for d in str1.splitlines()]
+    lines2 = [d.strip() for d in str2.splitlines()]
+
+    diff = list(difflib.ndiff(lines1, lines2))
+
+    delete = {}
+    add = {}
+    line_diff_dict = {}
+
+    line_num1 = 0
+    line_num2 = 0
+
+    for d in diff:
+        code = d[0]
+        text = d[2:]
+
+        if code == " ":  # unchanged
+            line_num1 += 1
+            line_num2 += 1
+        elif code == "-":  # deletion
+            line_num1 += 1
+            delete[f"line {line_num1}"] = text
+            line_diff_dict[f"{line_num1} Delete"] = {
+                "type": "Delete",
+                "original": text,
+                "modified": ""
+            }
+        elif code == "+":  # addition
+            line_num2 += 1
+            add[f"line {line_num2}"] = text
+            line_diff_dict[f"{line_num2} Add"] = {
+                "type": "Add",
+                "original": "",
+                "modified": text
+            }
+
+    # Post-process for modifications:
+    # If a deletion is immediately followed by an addition at (roughly) same line,
+    # treat it as "Modify"
+    keys = list(line_diff_dict.keys())
+    i = 0
+    while i < len(keys) - 1:
+        k1, k2 = keys[i], keys[i + 1]
+        v1, v2 = line_diff_dict[k1], line_diff_dict[k2]
+        if v1["type"].startswith("Delete") and v2["type"].startswith("Add"):
+            # merge as Modify
+            line_diff_dict[k1.split()[0]] = {
+                "type": "Modify",
+                "original": v1["original"],
+                "modified": v2["modified"]
+            }
+            del line_diff_dict[k1]
+            del line_diff_dict[k2]
+            i += 1
+        i += 1
+
+    return delete, add, {k.split()[0]: v for k, v in line_diff_dict.items()}
 
 
 def align_test_to_solution(solution_code, test_code):
