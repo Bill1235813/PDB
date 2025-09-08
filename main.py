@@ -6,7 +6,6 @@ import datetime
 import preprocess
 from evaluator import Evaluator
 from rewrite import rewrite
-from bug_generation import bug_generate_correct
 from bug_generation import bug_correct
 
 
@@ -27,7 +26,8 @@ def gen_main(args):
     # Add datetime
     time_to_add = datetime.datetime.now().strftime("%m%d-%H%M")
 
-    model_api_file = os.path.join("keys", args.model_api_file)
+    if args.model_api_file:
+        model_api_file = os.path.join("keys", args.model_api_file)
     id_filtering_file = os.path.join(data_dir, args.id_filtering_file)
     log_file_prefix = os.path.join(log_dir, args.log_prefix) + "_" + time_to_add + "_"
     output_file = os.path.join(output_dir, args.output_prefix) + "_" + time_to_add + ".json"
@@ -76,20 +76,25 @@ def gen_main(args):
     # Preprocess the data
     print("Preprocessing data...")
     raw_data = eval("preprocess." + args.dataset_name + "_preprocess")(raw_data)
-
-    # Load the model
-    api_key = open(model_api_file, "r").read().strip()
     remain_data = raw_data
 
-    # generator_cor = dspy.LM(args.model_name, api_key=api_key, temperature=args.temperature, cache=False, max_tokens=21000)
-    generator_cor = dspy.LM("openai/Qwen-2.5-Coder-32B-Instuct",
-        api_base="http://127.0.0.1:30000/v1",  # Add /v1 prefix for OpenAI-compatible API
-        api_key="local", 
-        model_type="chat",
-        max_tokens = 3000,
-        temperature=0.7,
-        cache=False,
-        )
+    # Load the model
+    if args.model_api_file:
+        # Use API-based model when API file is provided
+        api_key = open(model_api_file, "r").read().strip()
+        generator_cor = dspy.LM(args.model_name, api_key=api_key, temperature=args.temperature, cache=False, max_tokens=21000)
+    else:
+        # Use local model server when no API file is provided
+        local_model_name = "openai/" + args.model_name
+        generator_cor = dspy.LM(local_model_name,
+            api_base="http://127.0.0.1:30000/v1",  # Add /v1 prefix for OpenAI-compatible API
+            api_key="local", 
+            model_type="chat",
+            max_tokens = 21000,
+            temperature=args.temperature,
+            cache=False,
+            )
+        print(f"Using local model server: {local_model_name}")
     print(f"Enter debugging process")
     buggy_code, remain_data = bug_correct(
         remain_data,
@@ -102,9 +107,8 @@ def gen_main(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset_name", type=str, help="Dataset name", required=True)
-    parser.add_argument("--model_name", type=str, help="Generator model name", default="openai/o4-mini-2025-04-16")
-    parser.add_argument("--model_api_file", type=str, help="Model API file path under keys",
-                        default="openai_key.txt")
+    parser.add_argument("--model_name", type=str, help="Debugging model name", required=True)
+    parser.add_argument("--model_api_file", type=str, help="Model API file path under keys (optional - if provided, uses API; if omitted, uses local server)")
     parser.add_argument("--input_file", nargs='+', help="Input file path, under data/{dataset_name}",
                         default="bigcodebench-full-data.json")
     parser.add_argument("--id_filtering_file", type=str, help="ID filtering file path, under data/{dataset_name}",
@@ -113,11 +117,9 @@ if __name__ == "__main__":
                         default="log")
     parser.add_argument("--output_prefix", type=str, help="Output file path, under output/{dataset_name}",
                         default="buggy_code")
-    parser.add_argument("--rewrite", action="store_true", help="Whether to rewrite the code")
-    parser.add_argument("--max_iter", type=int, default=5, help="Maximum number of add-bug iterations")
-    parser.add_argument("--bug_per_time", type=int, default=3, help="Number of bugs to add per iteration")
-    parser.add_argument("--max_id_count", type=int, default=30, help="max number of ids to be used, -1 for no limit")
-    parser.add_argument("--temperature", type=float, default=0.7, help="Temperature for the generator")
+    parser.add_argument("--bug_per_time", type=int, help="Number of bugs to add per iteration")
+    parser.add_argument("--max_id_count", type=int, help="max number of ids to be used, -1 for no limit")
+    parser.add_argument("--temperature", type=float, help="Temperature for the generator")
 
     args = parser.parse_args()
     gen_main(args)
