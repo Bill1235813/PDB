@@ -171,7 +171,7 @@ def verify(dataset, verify_file):
     elif dataset == "livecodebench":
         """Minimal pass/fail checker using LiveCodeBench's execution harness."""
         # This flow uses a JSON array and the custom_evaluator.py script
-        workdir = Path("/home/zhuwangz/miaosenchai/GenerationDataset/LiveCodeBench")
+        workdir = Path("/home/ec2-user/DebugBench/Livecode-m")
 
         eval_output_filename = verify_file.replace(".json", "_output_eval_all.json")
 

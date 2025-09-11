@@ -1,7 +1,7 @@
 bug_type_examples = [
     "Adding ONE line",
     "Deleting ONE line",
-    "Modifying ONE line, not adding or deleting. Some bug examples:\n[[bug_description]]",
+    "Modifying ONE line, not adding or deleting. Some bug examples (NO need to follow these examples exactly):\n[[bug_description]]",
 ]
 
 hard_bug_examples = {

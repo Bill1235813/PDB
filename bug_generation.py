@@ -1,12 +1,17 @@
 import re
+import numpy as np
+import random
 import tqdm
 import json
-from utils import verify
+import copy
+from utils import verify, file_diff
+from examples import hard_bug_examples, bug_type_examples
+from collections import defaultdict
 
 BUG_GEN_TEMPLATE = (
     "Your task is to perform a deep analysis of a code snippet and intentionally introduce bugs with NO comments.\n"
     "You will be given two components:\n"
-    "PART 1: A problem description outlining the intended functionality \n"
+    "PART 1: A problem description outlining the intended functionality.\n"
     "PART 2: A solution to the problem.\n"
     "First, carefully read and understand both the problem description and the provided solution.\n"
     "Then, modify the solution by injecting realistic programming errors to simulate human mistakes.\n\n"
@@ -39,9 +44,42 @@ BUG_GEN_TEMPLATE = (
     "Buggy Code Output (use the format above):\\n"
 )
 
+ONE_BUG_GEN_TEMPLATE = (
+    "Your task is to perform a deep analysis of a code snippet and intentionally introduce one bug.\n"
+    "You will be given two components:\n"
+    "PART 1: A task description outlining the intended functionality \n"
+    "PART 2: A solution to the task.\n"
+    "First, carefully read and understand both the task description and the provided solution.\n"
+    "Then, modify the solution by injecting realistic programming errors to simulate human mistakes.\n\n"
+    "Instructions for modifying the code:\n"
+    "- Delete all comments from the original code.\n"
+    "- Do NOT add any new comments to the modified code.\n"
+    "- Please ONLY change one line and make sure changing that line induce a HARD bug to the task.\n"
+    "- Do NOT change any other variable names.\n\n"
+    "Bug to add: {bug_type}\n\n"
+    "Important rules:\n"
+    "- Do NOT include any comments inside the code.\n"
+    "- Do NOT change more than one line.\n"
+    "Output format:\n"
+    "- A single code block with the final, modified version of the buggy code with NO comments.\n"
+    "- The difference between the original and modified buggy code in JSON format.\n"
+    "You need to check there is NO COMMENT inside your generation for the final step. Don't forget to include ```json ``` for parsing purpose\n"
+    "---\n"
+    "PART 1: Problem Description\n"
+    "```text\n{task_prompt}\n```\n\n"
+    "PART 2: Solution Code\n"
+    "```python\n{gt_solution}\n```\n\n"
+    "---\n"
+    "Output format (follow *exactly*):\\n"
+    "```python\\n[Buggy code here]\\n```\\n"
+    "Diff in JSON format (valid JSON, keys MUST be quoted strings):\n"
+    "```json\n{{\n  \"<line_number>\": {{ \"original\": \"<orig line>\", \"modified\": \"<new line>\" }},\n  ...\n}}\n```\n"
+    "Buggy Code Output (use the format above):\\n"
+)
+
 DEBUG_TEMPLATE = (
     "Analyze and debug the given Python implementation that contains errors \n"
-    "Identify the bugs, explain the issues, and fix only the bugs in the code. Do not generate a new solution.\n\n"
+    "Identify the bugs and fix only the bugs in the code. Do not generate a new solution. You don't need to provide any explanation.\n\n"
     "You must preserve the original code logic exactly. You are NOT allowed to:\n"
     "- Change variable names\n"
     "- Change the loop structure (e.g., for/while)\n"
@@ -62,8 +100,6 @@ DEBUG_TEMPLATE = (
     "---\n"
     "Output format (follow *exactly*):\n"
     "```python\n[Corrected code here]\n```\n"
-    "Diff in JSON format (valid JSON):\n"
-    "```json\n{{\n  \"<line_number>\": {{ \"original\": \"<orig line>\", \"modified\": \"<new line>\" }},\n  ...\n}}\n```\n"
     "Corrected Code Output (use the format above):\n"
 )
 
@@ -71,39 +107,247 @@ CODE_BLOCK_REGEX = re.compile(r"```(?:python)?\s*\n(.*?)```", re.DOTALL | re.IGN
 DIFF_REGEX = re.compile(r"```json\s*(\{.*?\})\s*```", re.DOTALL | re.IGNORECASE)
 
 
-def extract_json_diff(text):
-    match = DIFF_REGEX.search(text)
+# def extract_json_diff(text):
+#     match = DIFF_REGEX.search(text)
+#
+#     if not match:
+#         return None
+#
+#     json_str = match.group(1).strip()
+#     # remove placeholder lines with '...' and trailing commas before closing brace
+#     json_str = re.sub(r",?\s*\.\.\.\s*", "", json_str)
+#     try:
+#         diff_dict = json.loads(json_str)
+#         return diff_dict
+#     except Exception:
+#         return None
 
-    if not match:
-        return None
 
-    json_str = match.group(1).strip()
-    # remove placeholder lines with '...' and trailing commas before closing brace
-    json_str = re.sub(r",?\s*\.\.\.\s*", "", json_str)
-    try:
-        diff_dict = json.loads(json_str)
-        return diff_dict
-    except Exception:
-        return None
+def diff_to_str(k, v):
+    return f"{k}: {v['original']} --> {v['modified']}"
+
+
+diff_str_pattern = re.compile(r"^(\d+): (.*) --> (.*)$")
+
+
+def str_to_diff(s):
+    m = diff_str_pattern.match(s)
+    if not m:
+        raise ValueError(f"String not in expected format: {s}")
+    k, original, modified = m.groups()
+    if original == "":
+        type = "Add"
+    elif modified == "":
+        type = "Delete"
+    else:
+        type = "Modify"
+    return {int(k): {"type": type, "original": original, "modified": modified}}
+
+
+def compose_and_apply_diff(gt_solution, k, diff_strs):
+    """
+    Pick k non-adjacent diffs from diff_strs and apply them to gt_solution.
+
+    Rules:
+      - Replace: original != "" and modified != ""  -> replace line
+      - Insert : original == "" and modified != ""  -> insert modified at line_no (before current line)
+      - Delete : original != "" and modified == ""  -> delete line_no
+
+    :param gt_solution: Original ground-truth code (string).
+    :param k: Number of modifications.
+    :param diff_strs: List of diff strings like "3: foo --> bar".
+    :return: (list of chosen diff strings, buggy_code string) or (None, None) if not possible.
+    """
+    if len(diff_strs) < k:
+        return None, None
+
+    # Parse diff_strs into list[(line_no, original, modified, diff_str)]
+    diffs = []
+    for d in diff_strs:
+        parsed = str_to_diff(d)
+        for line_no, v in parsed.items():
+            diffs.append((line_no, v["original"], v["modified"], d))
+
+    diffs.sort(key=lambda x: x[0])  # sort by line number
+
+    # Try random selections until one satisfies non-adjacency
+    for _ in range(100):
+        chosen = random.sample(diffs, k)
+        chosen.sort(key=lambda x: x[0])
+        line_nums = [c[0] for c in chosen]
+
+        # enforce non-adjacency
+        if all(abs(line_nums[i] - line_nums[i - 1]) > 1 for i in range(1, len(line_nums))):
+            # Apply modifications
+            code_lines = gt_solution.splitlines()
+
+            # Process from bottom to top to avoid messing up indices
+            for line_no, orig, mod, _ in sorted(chosen, key=lambda x: x[0], reverse=True):
+                idx = line_no - 1  # 1-based to 0-based
+
+                if orig and mod:  # Replace
+                    if 0 <= idx < len(code_lines):
+                        code_lines[idx] = mod
+
+                elif not orig and mod:  # Insertion
+                    if 0 <= idx <= len(code_lines):
+                        code_lines.insert(idx, mod)
+
+                elif orig and not mod:  # Deletion
+                    if 0 <= idx < len(code_lines):
+                        del code_lines[idx]
+
+            buggy_code = "\n".join(code_lines)
+            chosen_strs = [c[3] for c in chosen]
+            return chosen_strs, buggy_code
+
+    return None, None  # couldn’t find valid set
 
 
 def bug_generate_correct(data, generator_add, genrator_cor, bug_per_time, log_file_prefix, dataset_name):
     """Run the bug-injection + self-repair loop for a single dataset.
 
     The *dataset_name* argument is forwarded to the verification helper so that
-    the correct evaluation harness is invoked (e.g BigCodeBench vs
+    the correct evaluation harness is invoked (e.g., BigCodeBench vs
     LiveCodeBench).
     """
-    remain_data, buggy_data = bug_generate(
-        data, generator_add, bug_per_time, log_file_prefix, dataset_name
-    )
-    hard_buggy_data, easy_buggy_data = bug_correct(
-        buggy_data, genrator_cor, log_file_prefix, dataset_name
-    )
-    return hard_buggy_data, remain_data + easy_buggy_data
+    all_logs = []
+    all_buggy_data = []
+    for _ in range(bug_per_time):
+        logs, buggy_data = bug_generate(
+            data, generator_add, log_file_prefix, dataset_name
+        )
+        all_logs += logs
+        all_buggy_data += buggy_data
+
+    # Save the buggy code log
+    with open(log_file_prefix + "_one_bug.json", "w") as f:
+        json.dump(all_logs, f, indent=2)
+
+    with open(log_file_prefix + "_one_bug_valid.json", "w") as f:
+        json.dump(all_buggy_data, f, indent=2)
+
+    all_buggy_data = bug_compose(all_buggy_data, 4, 20)
+
+    with open(log_file_prefix + "_comp_bug.json", "w") as f:
+        json.dump(all_buggy_data, f, indent=2)
+
+    # results = bug_correct(
+    #     all_buggy_data, genrator_cor, log_file_prefix, dataset_name
+    # )
+    # return results
 
 
-def bug_generate(data, generator, bug_per_time, log_file_prefix, dataset_name):
+def bug_compose(buggy_data, max_bugs, compose_per_example):
+    """
+    :param buggy_data: list of {
+        "task_id": str,
+        "gt_solution": str,
+        "task_prompt": str,
+        "bug_count": 1,
+        "diff": str,
+        "buggy_code": str,
+        "test": str or None
+    }
+    :param max_bugs: Number of bugs to generate.
+    :param compose_per_example: Number of composition to generate per example.
+    :param log_file_prefix:
+    :return: dict[bug_count] -> list of buggy examples
+    """
+    merged = defaultdict(lambda: {
+        "task_id": None,
+        "gt_solution": None,
+        "task_prompt": None,
+        "diff": [],
+        "test": None
+    })
+
+    for entry in buggy_data:
+        tid = entry["task_id"]
+        if merged[tid]["task_id"] is None:  # first time seeing this task_id
+            merged[tid]["task_id"] = tid
+            merged[tid]["gt_solution"] = entry["gt_solution"]
+            merged[tid]["task_prompt"] = entry["task_prompt"]
+            merged[tid]["test"] = entry["test"]
+
+        if entry.get("diff"):
+            for line, diff in entry["diff"].items():
+                diff_str = diff_to_str(line, diff)
+                if not diff_str in merged[tid]["diff"]:  # deduplicate
+                    merged[tid]["diff"].append(diff_str)
+
+    all_bugs = {1: buggy_data}  # bug_count: bug_data
+    # Apply k random non-adjacent modifications from diff_dict to gt_solution.
+    for k in range(2, max_bugs + 1):
+        composed_buggy_data = copy.deepcopy(merged)
+        for tid, composed_buggy_item in composed_buggy_data.items():
+            new_diff = []  # each item is a list of diff_strs
+            new_buggy_code = []  # each item is a str
+            gt_solution = composed_buggy_item["gt_solution"]
+            diff_dict = composed_buggy_item["diff"]
+
+            generated_codes = set()
+            for j in range(compose_per_example):
+                diff_comp, buggy_code = compose_and_apply_diff(gt_solution, k, diff_dict)
+
+                # Check if composition succeeded and the result is new
+                if buggy_code is not None and buggy_code not in generated_codes:
+                    new_diff.append(diff_comp)
+                    new_buggy_code.append(buggy_code)
+                    generated_codes.add(buggy_code)
+
+            composed_buggy_item["diff"] = new_diff
+            composed_buggy_item["buggy_code"] = new_buggy_code
+
+        # Expand the composed data back into a flat list of dictionaries
+        k_bug_data = []
+        for tid, item in composed_buggy_data.items():
+            for diff_list, code_str in zip(item["diff"], item["buggy_code"]):
+                final_diff_dict = {}
+                for d_str in diff_list:
+                    final_diff_dict.update(str_to_diff(d_str))
+
+                entry = {
+                    "task_id": item["task_id"],
+                    "gt_solution": item["gt_solution"],
+                    "task_prompt": item["task_prompt"],
+                    "bug_count": k,
+                    "diff": final_diff_dict,
+                    "buggy_code": code_str,
+                    "test": item["test"],
+                }
+                k_bug_data.append(entry)
+
+        all_bugs[k] = k_bug_data
+
+    return all_bugs
+
+
+if __name__ == "__main__":
+    all_buggy_data = json.load(open("log/bigcodebench/log_0909-1425_bug_iter1_one_bug.json"))
+    new_buggy_data = []
+    for log_entry in all_buggy_data:
+        gt_solution = log_entry["original_data"]["gt_solution"]
+        _, _, json_diff = file_diff(gt_solution, log_entry["buggy_code"])
+        if json_diff is not None:
+            log_entry["diff"] = json_diff
+            new_buggy_data.append({
+                "task_id": log_entry["task_id"],
+                "gt_solution": gt_solution,
+                "task_prompt": log_entry["original_data"]["task_prompt"],
+                "bug_count": 1,
+                "diff": json_diff,
+                "buggy_code": log_entry["buggy_code"],
+                "test": log_entry["test"] if "test" in log_entry else None
+            })
+
+    all_buggy_data = bug_compose(new_buggy_data, 4, 20)
+
+    with open("log/bigcodebench/log_0909-1425_comp_bug_new.json", "w") as f:
+        json.dump(all_buggy_data, f, indent=2)
+
+
+def bug_generate(data, generator, log_file_prefix, dataset_name):
     # ------------------------ Bug generation ------------------------
     results = []
     print("Generating buggy code...")
@@ -123,10 +367,17 @@ def bug_generate(data, generator, bug_per_time, log_file_prefix, dataset_name):
             "is_buggy": None
         }
 
-        prompt_text = BUG_GEN_TEMPLATE.format(
+        bug_type = bug_type_examples[random.randint(0, len(bug_type_examples) - 1)]
+        bug_desp_str = ""
+        select_ic_ids = np.random.choice(range(len(hard_bug_examples)), 3)
+        select_ic_examples = [list(hard_bug_examples.items())[id] for id in select_ic_ids]
+        for i, example in enumerate(select_ic_examples):
+            bug_desp_str += f"Example {i}: {example[0]}\n{example[1]}\n"
+        bug_type.replace("[[bug_description]]", bug_desp_str)
+        prompt_text = ONE_BUG_GEN_TEMPLATE.format(
             task_prompt=task_prompt,
             gt_solution=gt_solution if "buggy_code" not in item else item["buggy_code"],
-            bug_per_time=bug_per_time
+            bug_type=bug_type
         )
 
         try:
@@ -146,7 +397,7 @@ def bug_generate(data, generator, bug_per_time, log_file_prefix, dataset_name):
                 print("No match found in the response. Full response:", raw_output)
 
             # Extract JSON diff
-            json_diff = extract_json_diff(raw_output)
+            _, _, json_diff = file_diff(gt_solution, log_entry["buggy_code"])
             if json_diff is not None:
                 log_entry["diff"] = json_diff
             else:
@@ -200,10 +451,13 @@ def bug_generate(data, generator, bug_per_time, log_file_prefix, dataset_name):
                     f.write("\n")
                     wrote_any = True
         if wrote_any:
-            fail_ids, correct_ids = verify(dataset_name, verify_file)
+            fail_ids, correct_ids = [e["task_id"] for e in results], []
+            # fail_ids, correct_ids = verify(dataset_name, verify_file)
         else:
             print("No buggy submissions to evaluate.")
             fail_ids, correct_ids = [], []
+    else:
+        raise ValueError("Unexpected dataset name.")
 
     # Update results with success status
     remain_data = []
@@ -220,6 +474,7 @@ def bug_generate(data, generator, bug_per_time, log_file_prefix, dataset_name):
                 "task_id": entry["task_id"],
                 "gt_solution": entry["original_data"]["gt_solution"],
                 "task_prompt": entry["original_data"]["task_prompt"],
+                "bug_count": 1,
                 "diff": entry.get("diff"),
                 "buggy_code": entry["buggy_code"],
                 "test": entry["original_data"].get("test", None)  # For kodcodebench
@@ -230,11 +485,7 @@ def bug_generate(data, generator, bug_per_time, log_file_prefix, dataset_name):
 
     print("Total buggy code generated: {} out of {}".format(len(buggy_data), len(results)))
 
-    # Save the buggy code log
-    with open(log_file_prefix + "_bug.json", "w") as f:
-        json.dump(results, f, indent=2)
-
-    return remain_data, buggy_data
+    return results, buggy_data
 
 
 def bug_correct(data, generator, log_file_prefix, dataset_name):
@@ -282,7 +533,7 @@ def bug_correct(data, generator, log_file_prefix, dataset_name):
                 print("No match found in the response. Full response:", raw_output)
 
             # Extract JSON diff
-            json_diff = extract_json_diff(raw_output)
+            _, _, json_diff = file_diff(buggy_code, log_entry["buggy_code"])
             if json_diff is not None:
                 log_entry["sol_diff"] = json_diff
             else:
@@ -293,63 +544,71 @@ def bug_correct(data, generator, log_file_prefix, dataset_name):
 
         results.append(log_entry)
 
-    # Verify buggy
-    if dataset_name == "livecodebench":
-        verify_file = log_file_prefix + "_correct.json"
-        with open(verify_file, "w") as f:
-            data_to_write = [
-                {
-                    "question_id": entry["task_id"],
-                    "code_list": [entry["solution"]]
-                }
-                for entry in results if entry["solution"] is not None
-            ]
-            json.dump(data_to_write, f, indent=4)
-    elif dataset_name == "kodcodebench":
-        verify_file = log_file_prefix + "_correct.json"
-        with open(verify_file, "w") as f:
-            data_to_write = [
-                {
-                    "task_id": entry["task_id"],
-                    "solution": [entry["solution"]],
-                    "test": entry["original_data"]["test"]  # For kodcodebench
-                }
-                for entry in results if entry["solution"] is not None
-            ]
-            json.dump(data_to_write, f, indent=4)
-    else:
-        verify_file = log_file_prefix + "_correct.jsonl"
-        with open(verify_file, "w") as f:
-            for entry in results:
-                if entry["solution"] is not None:
-                    json.dump({
-                        "task_id": entry["task_id"],
-                        "solution": entry["solution"]
-                    }, f)
-                    f.write("\n")
-    fail_ids, correct_ids = verify(dataset_name, verify_file)
+    # # Verify buggy
+    # if dataset_name == "livecodebench":
+    #     verify_file = log_file_prefix + "_correct.json"
+    #     with open(verify_file, "w") as f:
+    #         data_to_write = [
+    #             {
+    #                 "question_id": entry["task_id"],
+    #                 "code_list": [entry["solution"]]
+    #             }
+    #             for entry in results if entry["solution"] is not None
+    #         ]
+    #         json.dump(data_to_write, f, indent=4)
+    # elif dataset_name == "kodcodebench":
+    #     verify_file = log_file_prefix + "_correct.json"
+    #     with open(verify_file, "w") as f:
+    #         data_to_write = [
+    #             {
+    #                 "task_id": entry["task_id"],
+    #                 "solution": [entry["solution"]],
+    #                 "test": entry["original_data"]["test"]  # For kodcodebench
+    #             }
+    #             for entry in results if entry["solution"] is not None
+    #         ]
+    #         json.dump(data_to_write, f, indent=4)
+    # else:
+    #     verify_file = log_file_prefix + "_correct.jsonl"
+    #     with open(verify_file, "w") as f:
+    #         for entry in results:
+    #             if entry["solution"] is not None:
+    #                 json.dump({
+    #                     "task_id": entry["task_id"],
+    #                     "solution": entry["solution"]
+    #                 }, f)
+    #                 f.write("\n")
+    # fail_ids, correct_ids = verify(dataset_name, verify_file)
+    #
+    # # Update results with success status
+    # hard_buggy_data = []
+    # easy_buggy_data = []
+    # for entry in results:
+    #     if entry["task_id"] in fail_ids:
+    #         entry["is_corrected"] = False
+    #         eval_dict = {
+    #             "model": generator.model,
+    #             "solution": entry["solution"],
+    #             "sol_diff": entry["sol_diff"],
+    #         }
+    #         hard_buggy_data.append(entry["original_data"])
+    #         hard_buggy_data[-1]["debug_results"] = eval_dict
+    #     elif entry["task_id"] in correct_ids:
+    #         entry["is_corrected"] = True
+    #         easy_buggy_data.append(entry["original_data"])
 
-    # Update results with success status
-    hard_buggy_data = []
-    easy_buggy_data = []
     for entry in results:
-        if entry["task_id"] in fail_ids:
-            entry["is_corrected"] = False
-            eval_dict = {
-                "model": generator.model,
-                "solution": entry["solution"],
-                "sol_diff": entry["sol_diff"],
-            }
-            hard_buggy_data.append(entry["original_data"])
-            hard_buggy_data[-1]["debug_results"] = eval_dict
-        elif entry["task_id"] in correct_ids:
-            entry["is_corrected"] = True
-            easy_buggy_data.append(entry["original_data"])
+        eval_dict = {
+            "model": generator.model,
+            "solution": entry["solution"],
+            "sol_diff": entry["sol_diff"],
+        }
+        entry["debug_results"] = eval_dict
 
-    print("Total hard buggy code generated: {} out of {}".format(len(hard_buggy_data), len(results)))
+    # print("Total hard buggy code generated: {} out of {}".format(len(hard_buggy_data), len(results)))
 
     # Save the buggy code log
     with open(log_file_prefix + "_correct.json", "w") as f:
         json.dump(results, f, indent=2)
 
-    return hard_buggy_data, easy_buggy_data
+    return results

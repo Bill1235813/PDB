@@ -5,8 +5,7 @@ python -m pdb main.py \
   --input_file bigcodebench-full-data.json\
   --log_prefix log \
   --output_prefix buggy_code \
-  --rewrite \
   --max_iter 1 \
-  --bug_per_time 3 \
-  --max_id_count 20 \
+  --bug_per_time 20 \
+  --max_id_count 30 \
   --temperature 0.7

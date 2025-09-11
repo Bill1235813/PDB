@@ -60,7 +60,7 @@ def livecodebench_preprocess(raw_data):
         processed_data.append(
             {
                 "task_id": task_id,
-                "gt_solution": code_list,
+                "buggy_code": code_list,
                 "task_prompt": task_prompt,
             }
         )
