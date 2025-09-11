@@ -1,12 +1,12 @@
-python main.py \
+python -m pdb main.py \
   --dataset_name livecodebench \
   --model_name openai/gpt-4o-2024-08-06 \
-  --model_api_file /home/zhuwangz/miaosenchai/rescue_code_bench/keys/openai_key.txt\
-  --input_file /home/zhuwangz/miaosenchai/GenerationDataset/LiveCodeBench/output/GPT-4O-2024-08-06-Old/true_livecode_gpt4o.json\
-  --log_prefix  _true_livecode\
+  --model_api_file openai_key.txt \
+  --input_file 2023_filtered_eval.json \
+  --log_prefix log \
   --output_prefix buggy_code \
   --rewrite \
   --max_iter 1 \
-  --bug_per_time 5 \
-  --max_id_count 30 \
+  --bug_per_time 20 \
+  --max_id_count 20 \
   --temperature 0.7

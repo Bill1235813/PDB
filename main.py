@@ -79,7 +79,8 @@ def gen_main(args):
     # Load the model
     api_key = open(model_api_file, "r").read().strip()
     generator_cor = dspy.LM("gpt-4o-2024-08-06", api_key=api_key, temperature=0.7, cache=False, max_tokens=16000)
-    generator_add = dspy.LM("o4-mini-2025-04-16", api_key=api_key, temperature=1.0, cache=False, max_tokens=21000)
+    generator_add = dspy.LM("gpt-4o-2024-08-06", api_key=api_key, temperature=0.7, cache=False, max_tokens=16000)
+    # generator_add = dspy.LM("o4-mini-2025-04-16", api_key=api_key, temperature=1.0, cache=False, max_tokens=21000)
 
     if args.rewrite:
         print("Rewriting code...")
@@ -90,7 +91,7 @@ def gen_main(args):
     valid_buggy_code = []
     for i in range(args.max_iter):
         print(f"Generating buggy code, iteration {i + 1}...")
-        buggy_code, remain_data = bug_generate_correct(
+        results = bug_generate_correct(
             remain_data,
             generator_add,
             generator_cor,
@@ -98,7 +99,7 @@ def gen_main(args):
             log_file_prefix + "bug_iter" + str(i + 1),
             args.dataset_name,
         )
-        valid_buggy_code.extend(buggy_code)
+        valid_buggy_code.extend(results)
 
     print("Total buggy code generated: ", len(valid_buggy_code))
 
@@ -131,8 +132,8 @@ if __name__ == "__main__":
     parser.add_argument("--output_prefix", type=str, help="Output file path, under output/{dataset_name}",
                         default="buggy_code")
     parser.add_argument("--rewrite", action="store_true", help="Whether to rewrite the code")
-    parser.add_argument("--max_iter", type=int, default=5, help="Maximum number of add-bug iterations")
-    parser.add_argument("--bug_per_time", type=int, default=3, help="Number of bugs to add per iteration")
+    parser.add_argument("--max_iter", type=int, default=1, help="Maximum number of add-bug iterations")
+    parser.add_argument("--bug_per_time", type=int, default=20, help="Number of bugs to add per iteration")
     parser.add_argument("--max_id_count", type=int, default=30, help="max number of ids to be used, -1 for no limit")
     parser.add_argument("--temperature", type=float, default=0.7, help="Temperature for the generator")
 
