@@ -88,7 +88,7 @@ def gen_main(args):
         local_model_name = "openai/" + args.model_name
         generator_cor = dspy.LM(local_model_name,
             api_base="http://127.0.0.1:30000/v1",  # Add /v1 prefix for OpenAI-compatible API
-            api_key="local", 
+            api_key="local",
             model_type="chat",
             max_tokens = 21000,
             temperature=args.temperature,
@@ -117,9 +117,11 @@ if __name__ == "__main__":
                         default="log")
     parser.add_argument("--output_prefix", type=str, help="Output file path, under output/{dataset_name}",
                         default="buggy_code")
-    parser.add_argument("--bug_per_time", type=int, help="Number of bugs to add per iteration")
-    parser.add_argument("--max_id_count", type=int, help="max number of ids to be used, -1 for no limit")
-    parser.add_argument("--temperature", type=float, help="Temperature for the generator")
+    parser.add_argument("--rewrite", action="store_true", help="Whether to rewrite the code")
+    parser.add_argument("--max_iter", type=int, default=1, help="Maximum number of add-bug iterations")
+    parser.add_argument("--bug_per_time", type=int, default=20, help="Number of bugs to add per iteration")
+    parser.add_argument("--max_id_count", type=int, default=30, help="max number of ids to be used, -1 for no limit")
+    parser.add_argument("--temperature", type=float, default=0.7, help="Temperature for the generator")
 
     args = parser.parse_args()
     gen_main(args)

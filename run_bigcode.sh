@@ -1,0 +1,11 @@
+python -m pdb main.py \
+  --dataset_name bigcodebench \
+  --model_name openai/gpt-4o \
+  --model_api_file openai_key.txt\
+  --input_file bigcodebench-full-data.json\
+  --log_prefix log \
+  --output_prefix buggy_code \
+  --max_iter 1 \
+  --bug_per_time 20 \
+  --max_id_count 30 \
+  --temperature 0.7
