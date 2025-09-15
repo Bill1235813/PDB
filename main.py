@@ -73,10 +73,16 @@ def gen_main(args):
     if args.max_id_count > 0:
         raw_data = dict(list(raw_data.items())[:args.max_id_count])
 
-    # Preprocess the data
+    # Note from Miaosen: I changed to a different preproces which will cause the original Bug generation pipline to fail
     print("Preprocessing data...")
-    raw_data = eval("preprocess." + args.dataset_name + "_preprocess")(raw_data)
-    remain_data = raw_data
+    if args.dataset_name == "livecodebench":
+        raw_data = preprocess.livecodebench_comp_bug_preprocess(raw_data)
+    else:
+        raw_data = eval("preprocess." + args.dataset_name + "_preprocess")(raw_data)
+    # Note from Miaosen: I changed this line to limit the number of test cases passed to the function because the provided json file has a number of bug key
+    # Please change it back if you are not using the correction mode
+    # remain_data = raw_data
+    remain_data = raw_data[:args.max_id_count]
 
     # Load the model
     if args.model_api_file:
@@ -91,17 +97,31 @@ def gen_main(args):
             api_key="local",
             model_type="chat",
             max_tokens = 21000,
-            temperature=args.temperature,
+            temperatufre=args.temperature,
             cache=False,
             )
         print(f"Using local model server: {local_model_name}")
     print(f"Enter debugging process")
-    buggy_code, remain_data = bug_correct(
+    results, remain_data = bug_correct(
         remain_data,
         generator_cor,
         log_file_prefix,
         args.dataset_name,
     )
+
+    # Run evaluation and save outputs
+    try:
+        evaluator = Evaluator(results)
+        evaluator.run_evaluation()
+    except Exception as e:
+        print(f"Evaluation failed: {e}")
+    
+    try:
+        with open(output_file, "w") as f:
+            json.dump(results, f, indent=2)
+        print(f"Saved results to {output_file}")
+    except Exception as e:
+        print(f"Failed to save results: {e}")
 
 
 if __name__ == "__main__":
