@@ -1,22 +1,32 @@
 import json
 import numpy as np
-from codebleu import calc_codebleu
+# from codebleu import calc_codebleu
 
 
 class Evaluator:
     def __init__(self, results):
         self.results = results
         self.ids = [s["task_id"] for s in self.results]
-        self.gt = [s["gt_solution"] for s in self.results]
-        self.buggy_code = [s["buggy_code"] for s in self.results]
+        # Support both top-level fields and nested under original_data
+        self.gt = [
+            (s["gt_solution"] if "gt_solution" in s else s["original_data"].get("gt_solution"))
+            for s in self.results
+        ]
+        self.buggy_code = [
+            (s["buggy_code"] if "buggy_code" in s else s["original_data"]["buggy_code"])
+            for s in self.results
+        ]
         self.pred = [s["debug_results"]["solution"] for s in self.results]
-        self.gt_diff = [s["diff"] for s in self.results]
+        self.gt_diff = [
+            (s["diff"] if "diff" in s else s["original_data"]["diff"]) for s in self.results
+        ]
         self.pred_diff = [s["debug_results"]["sol_diff"] for s in self.results]
+        self.unit_true = [s["debug_results"]["unit_true"] for s in self.results]
 
         self.count = len(self.ids)
         self.metrics = {
             "Symbolic debugging scores": self.symbolic_line_by_line,
-            "CodeBLEU": self.code_bleu
+            # "CodeBLEU": self.code_bleu
         }
 
         self.scores = {metrics: [] for metrics in self.metrics}
@@ -31,9 +41,32 @@ class Evaluator:
 
     def symbolic_line_by_line(self):
         total_precision, total_recall, total_f1 = 0, 0, 0
-        for gt_diff, pred_diff in zip(self.gt_diff, self.pred_diff):
-            gt_set = set([lc["original"].strip() + " --> " + lc["modified"].strip() for l, lc in gt_diff.items()])
-            pred_set = set([lc["modified"].strip() + " --> " + lc["original"].strip() for l, lc in pred_diff.items()])
+        # Load cache for acceptable alternatives
+        with open("data/livecodebench/symbolic_cache.json", "r") as f:
+            cache = json.load(f)
+
+        def norm(s):
+            return (s or "").strip()
+
+        for idx, (gt_diff, pred_diff) in enumerate(zip(self.gt_diff, self.pred_diff)):
+            task_id = self.ids[idx]
+            task_cache = cache.get(task_id, {})
+
+            # Build GT set
+            gt_set = set()
+            for _, lc in gt_diff.items():
+                gt_line = norm(lc["original"]) 
+                buggy_line = norm(lc["modified"]) 
+                gt_set.add(f"{gt_line} <-- {buggy_line}")
+
+            # Build predicted fixes set (accept GT or alternatives from cache)
+            pred_set = set()
+            for _, lc in pred_diff.items():
+                buggy_line = norm(lc["original"]) 
+                fixed_line = norm(lc["modified"]) 
+                pred_set.add(f"{fixed_line} <-- {buggy_line}")
+                for alt in task_cache.get(buggy_line, []):
+                    pred_set.add(f"{norm(alt)} <-- {buggy_line}")
 
             true_positives = len(gt_set & pred_set)
 
@@ -50,14 +83,13 @@ class Evaluator:
             total_f1 += f1
 
             self.scores["Symbolic debugging scores"].append((precision, recall, f1))
-            # print(precision, recall, f1)
 
         return "Precision", total_precision / self.count, "Recall", total_recall / self.count, "F1", total_f1 / self.count
 
-    def code_bleu(self, lang="python"):
-        self.scores["CodeBLEU"] = [calc_codebleu([gt], [pred], lang)["codebleu"] for gt, pred in
-                                   zip(self.gt, self.pred)]
-        return np.mean(self.scores["CodeBLEU"])
+    # def code_bleu(self, lang="python"):
+    #     self.scores["CodeBLEU"] = [calc_codebleu([gt], [pred], lang)["codebleu"] for gt, pred in
+    #                                zip(self.gt, self.pred)]
+    #     return np.mean(self.scores["CodeBLEU"]) if self.scores["CodeBLEU"] else 0.0
 
     def save_results(self):
         for idx, result in enumerate(self.results):

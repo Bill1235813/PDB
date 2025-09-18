@@ -6,7 +6,7 @@ import datetime
 import preprocess
 from evaluator import Evaluator
 from rewrite import rewrite
-from bug_generation import bug_generate_correct
+from bug_generation import bug_correct
 
 
 def gen_main(args):
@@ -26,7 +26,8 @@ def gen_main(args):
     # Add datetime
     time_to_add = datetime.datetime.now().strftime("%m%d-%H%M")
 
-    model_api_file = os.path.join("keys", args.model_api_file)
+    if args.model_api_file:
+        model_api_file = os.path.join("keys", args.model_api_file)
     id_filtering_file = os.path.join(data_dir, args.id_filtering_file)
     log_file_prefix = os.path.join(log_dir, args.log_prefix) + "_" + time_to_add + "_"
     output_file = os.path.join(output_dir, args.output_prefix) + "_" + time_to_add + ".json"
@@ -72,57 +73,62 @@ def gen_main(args):
     if args.max_id_count > 0:
         raw_data = dict(list(raw_data.items())[:args.max_id_count])
 
-    # Preprocess the data
+    # Note from Miaosen: I changed to a different preproces which will cause the original Bug generation pipline to fail
     print("Preprocessing data...")
-    raw_data = eval("preprocess." + args.dataset_name + "_preprocess")(raw_data)
+    if args.dataset_name == "livecodebench":
+        raw_data = preprocess.livecodebench_comp_bug_preprocess(raw_data)
+    else:
+        raw_data = eval("preprocess." + args.dataset_name + "_preprocess")(raw_data)
+    # Note from Miaosen: I changed this line to limit the number of test cases passed to the function because the provided json file has a number of bug key
+    # Please change it back if you are not using the correction mode
+    # remain_data = raw_data
+    remain_data = raw_data[:args.max_id_count]
 
     # Load the model
-    api_key = open(model_api_file, "r").read().strip()
-    generator_cor = dspy.LM("gpt-4o-2024-08-06", api_key=api_key, temperature=0.7, cache=False, max_tokens=16000)
-    generator_add = dspy.LM("gpt-4o-2024-08-06", api_key=api_key, temperature=0.7, cache=False, max_tokens=16000)
-    # generator_add = dspy.LM("o4-mini-2025-04-16", api_key=api_key, temperature=1.0, cache=False, max_tokens=21000)
-
-    if args.rewrite:
-        print("Rewriting code...")
-        remain_data = rewrite(raw_data, generator_add, args.dataset_name, log_file_prefix + "rewrite")
+    if args.model_api_file:
+        # Use API-based model when API file is provided
+        api_key = open(model_api_file, "r").read().strip()
+        generator_cor = dspy.LM(args.model_name, api_key=api_key, temperature=args.temperature, cache=False, max_tokens=21000)
     else:
-        remain_data = raw_data
+        # Use local model server when no API file is provided
+        local_model_name = "openai/" + args.model_name
+        generator_cor = dspy.LM(local_model_name,
+            api_base="http://127.0.0.1:30000/v1",  # Add /v1 prefix for OpenAI-compatible API
+            api_key="local",
+            model_type="chat",
+            max_tokens = 21000,
+            temperatufre=args.temperature,
+            cache=False,
+            )
+        print(f"Using local model server: {local_model_name}")
+    print(f"Enter debugging process")
+    results, remain_data = bug_correct(
+        remain_data,
+        generator_cor,
+        log_file_prefix,
+        args.dataset_name,
+    )
 
-    valid_buggy_code = []
-    for i in range(args.max_iter):
-        print(f"Generating buggy code, iteration {i + 1}...")
-        results = bug_generate_correct(
-            remain_data,
-            generator_add,
-            generator_cor,
-            args.bug_per_time,
-            log_file_prefix + "bug_iter" + str(i + 1),
-            args.dataset_name,
-        )
-        valid_buggy_code.extend(results)
-
-    print("Total buggy code generated: ", len(valid_buggy_code))
-
-    # Save the buggy code
-    print("Saving buggy code...")
-    with open(output_file, "w") as f:
-        json.dump(valid_buggy_code, f, indent=2)
-
-    evaluator = Evaluator(valid_buggy_code)
-    evaluator.run_evaluation()
-
-    # Save the evaluation
-    print("Saving evaluation...")
-    with open(output_file, "w") as f:
-        json.dump(valid_buggy_code, f, indent=2)
+    # Run evaluation and save outputs
+    try:
+        evaluator = Evaluator(results)
+        evaluator.run_evaluation()
+    except Exception as e:
+        print(f"Evaluation failed: {e}")
+    
+    try:
+        with open(output_file, "w") as f:
+            json.dump(results, f, indent=2)
+        print(f"Saved results to {output_file}")
+    except Exception as e:
+        print(f"Failed to save results: {e}")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset_name", type=str, help="Dataset name", required=True)
-    parser.add_argument("--model_name", type=str, help="Generator model name", default="openai/o4-mini-2025-04-16")
-    parser.add_argument("--model_api_file", type=str, help="Model API file path under keys",
-                        default="openai_key.txt")
+    parser.add_argument("--model_name", type=str, help="Debugging model name", required=True)
+    parser.add_argument("--model_api_file", type=str, help="Model API file path under keys (optional - if provided, uses API; if omitted, uses local server)")
     parser.add_argument("--input_file", nargs='+', help="Input file path, under data/{dataset_name}",
                         default="bigcodebench-full-data.json")
     parser.add_argument("--id_filtering_file", type=str, help="ID filtering file path, under data/{dataset_name}",

@@ -1,7 +1,9 @@
 .idea/
 keys/
 benchmark/
-
+memorization/
+scrips/
+restore_session.sh
 # Python cache and compiled files
 __pycache__/
 *.pyc
@@ -50,6 +52,7 @@ wheels/
 
 # Logs
 *.log
+log/livecodebench/
 
 # Temporary files
 *.tmp
@@ -58,3 +61,5 @@ wheels/
 
 READ.md
 show_lcb_dataset.py
+
+

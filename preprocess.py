@@ -60,7 +60,7 @@ def livecodebench_preprocess(raw_data):
         processed_data.append(
             {
                 "task_id": task_id,
-                "gt_solution": code_list,
+                "buggy_code": code_list,
                 "task_prompt": task_prompt,
             }
         )
@@ -77,5 +77,81 @@ def kodcodebench_preprocess(raw_data):
             "task_prompt": example["question"],
             "test": example["test"]
         })
+
+    return processed_data
+
+
+def livecodebench_comp_bug_preprocess(raw_data):
+    """
+    Expected input shape:
+    - Dict mapping bug_count (e.g., "1", "2", ...) -> list[entry]
+    - Or directly a list[entry]
+
+    Each entry typically contains:
+    {
+        "task_id": str,
+        "gt_solution": str,
+        "task_prompt": str,
+        "bug_count": int,
+        "diff": { line_no: { original, modified }, ... },
+        "buggy_code": str,
+        "test": optional
+    }
+
+    Output format per item (what bug_correct expects for livecodebench):
+    {
+        "task_id": str,
+        "buggy_code": str,
+        "task_prompt": str,
+        "diff": optional
+    }
+    """
+    processed_data = []
+
+    # Flatten to a list of entries
+    if isinstance(raw_data, dict):
+        # Values should be lists of entries
+        entries = []
+        for v in raw_data.values():
+            if isinstance(v, list):
+                entries.extend(v)
+        # If not found, fallback to dict values directly
+        if not entries:
+            entries = list(raw_data.values())
+    elif isinstance(raw_data, list):
+        entries = raw_data
+    else:
+        entries = []
+
+    for ex in entries:
+        if not isinstance(ex, dict):
+            continue
+
+        task_id = str(ex.get("task_id")) if ex.get("task_id") is not None else None
+        buggy_code = ex.get("buggy_code")
+        task_prompt = ex.get("task_prompt") or ""
+        diff = ex.get("diff")
+        gt_solution = ex.get("gt_solution")
+        bug_count = ex.get("bug_count")
+        test = ex.get("test")
+
+        if not task_id or not buggy_code:
+            continue
+
+        processed_item = {
+            "task_id": task_id,
+            "buggy_code": buggy_code,
+            "task_prompt": task_prompt,
+        }
+        if isinstance(diff, dict):
+            processed_item["diff"] = diff
+        if isinstance(gt_solution, str):
+            processed_item["gt_solution"] = gt_solution
+        if isinstance(bug_count, int):
+            processed_item["bug_count"] = bug_count
+        if test is not None:
+            processed_item["test"] = test
+
+        processed_data.append(processed_item)
 
     return processed_data

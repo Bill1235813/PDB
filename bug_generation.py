@@ -4,7 +4,8 @@ import random
 import tqdm
 import json
 import copy
-from utils import verify, file_diff
+from pathlib import Path
+from utils import verify, file_diff, load_symbolic_cache, save_symbolic_cache, symbolic_judge, verify_single_solution
 from examples import hard_bug_examples, bug_type_examples
 from collections import defaultdict
 
@@ -79,7 +80,7 @@ ONE_BUG_GEN_TEMPLATE = (
 
 DEBUG_TEMPLATE = (
     "Analyze and debug the given Python implementation that contains errors \n"
-    "Identify the bugs, explain the issues, and fix only the bugs in the code. Do not generate a new solution.\n\n"
+    "Identify the bugs and fix only the bugs in the code. Do not generate a new solution. You don't need to provide any explanation.\n\n"
     "You must preserve the original code logic exactly. You are NOT allowed to:\n"
     "- Change variable names\n"
     "- Change the loop structure (e.g., for/while)\n"
@@ -100,8 +101,6 @@ DEBUG_TEMPLATE = (
     "---\n"
     "Output format (follow *exactly*):\n"
     "```python\n[Corrected code here]\n```\n"
-    "Diff in JSON format (valid JSON):\n"
-    "```json\n{{\n  \"<line_number>\": {{ \"original\": \"<orig line>\", \"modified\": \"<new line>\" }},\n  ...\n}}\n```\n"
     "Corrected Code Output (use the format above):\n"
 )
 
@@ -440,7 +439,7 @@ def bug_generate(data, generator, log_file_prefix, dataset_name):
             ]
             json.dump(data_to_write, f, indent=4)
         fail_ids, correct_ids = verify(dataset_name, verify_file)
-    elif dataset_name == "bigcodebench":
+    elif dataset_name == "bigcodebench":  # bigcodebench
         verify_file = log_file_prefix + "_bug.jsonl"
         with open(verify_file, "w") as f:
             wrote_any = False
@@ -496,15 +495,34 @@ def bug_correct(data, generator, log_file_prefix, dataset_name):
         print("No buggy data to correct; skipping correction phase.")
         return [], []
 
+    cache = load_symbolic_cache(dataset_name)
+    # If cache is empty (no file), seed it from GT diffs so symbolic judge
+    # accepts exact reversals immediately and persist for future runs.
+    if not cache:
+        for item in data:
+            tid = item.get("task_id")
+            gt_diff = item.get("diff") or {}
+            if not gt_diff:
+                continue
+            task_cache = cache.setdefault(tid, {})
+            for _, v in gt_diff.items():
+                buggy_line = str(v.get("modified", "")).strip()
+                fixed_line = str(v.get("original", "")).strip()
+                if buggy_line == "" and fixed_line == "":
+                    continue
+                task_cache.setdefault(buggy_line, [])
+                if fixed_line not in task_cache[buggy_line]:
+                    task_cache[buggy_line].append(fixed_line)
+        save_symbolic_cache(dataset_name, cache)
+
     results = []
     print("Buggy code correction...")
     for index, item in tqdm.tqdm(enumerate(data)):
         task_id = item.get("task_id")
         buggy_code = item.get("buggy_code")
-        diff = item.get("diff")
+        gt_diff = item.get("diff")
         task_prompt = item.get("task_prompt")
 
-        # Initialize log entry for this item
         log_entry = {
             "task_id": task_id,
             "original_data": item,
@@ -527,90 +545,55 @@ def bug_correct(data, generator, log_file_prefix, dataset_name):
             else:
                 raise ValueError("Unexpected response format from the model.")
 
-            # Parse code block
             match = CODE_BLOCK_REGEX.search(raw_output)
             if match:
                 log_entry["solution"] = match.group(1).strip()
             else:
                 print("No match found in the response. Full response:", raw_output)
 
-            # Extract JSON diff
-            _, _, json_diff = file_diff(buggy_code, log_entry["buggy_code"])
-            if json_diff is not None:
+            if log_entry["solution"] is not None and buggy_code is not None:
+                _, _, json_diff = file_diff(buggy_code, log_entry["solution"])
                 log_entry["sol_diff"] = json_diff
-            else:
-                print("Error extracting JSON diff from the response. Full response:", raw_output)
 
         except Exception as e:
             print(f"Error processing task_id {task_id}: {e}")
 
+        # Symbolic first; skip unit tests if symbolically corrected
+        symbolically_true, unmatched_pairs = symbolic_judge(task_id, log_entry.get("sol_diff"), gt_diff, cache)
+
+        unit_true = False
+        if log_entry.get("solution"):
+            if symbolically_true:
+                unit_true = True
+            else:
+                unit_true = verify_single_solution(dataset_name, item, log_entry["solution"], Path(log_file_prefix).name)
+
+        if unit_true:
+            log_entry["is_corrected"] = True
+            # cache any unmatched pairs as newly accepted alternatives
+            if unmatched_pairs:
+                task_cache = cache.setdefault(task_id, {})
+                for buggy_line, fixed_line in unmatched_pairs:
+                    task_cache.setdefault(buggy_line, [])
+                    if fixed_line not in task_cache[buggy_line]:
+                        task_cache[buggy_line].append(fixed_line)
+        else:
+            log_entry["is_corrected"] = False
+
+        eval_dict = {
+            "model": getattr(generator, "model", None),
+            "solution": log_entry.get("solution"),
+            "sol_diff": log_entry.get("sol_diff"),
+            "symbolic_true": symbolically_true,
+            "unit_true": unit_true,
+        }
+        log_entry["debug_results"] = eval_dict
+
         results.append(log_entry)
 
-    # # Verify buggy
-    # if dataset_name == "livecodebench":
-    #     verify_file = log_file_prefix + "_correct.json"
-    #     with open(verify_file, "w") as f:
-    #         data_to_write = [
-    #             {
-    #                 "question_id": entry["task_id"],
-    #                 "code_list": [entry["solution"]]
-    #             }
-    #             for entry in results if entry["solution"] is not None
-    #         ]
-    #         json.dump(data_to_write, f, indent=4)
-    # elif dataset_name == "kodcodebench":
-    #     verify_file = log_file_prefix + "_correct.json"
-    #     with open(verify_file, "w") as f:
-    #         data_to_write = [
-    #             {
-    #                 "task_id": entry["task_id"],
-    #                 "solution": [entry["solution"]],
-    #                 "test": entry["original_data"]["test"]  # For kodcodebench
-    #             }
-    #             for entry in results if entry["solution"] is not None
-    #         ]
-    #         json.dump(data_to_write, f, indent=4)
-    # else:
-    #     verify_file = log_file_prefix + "_correct.jsonl"
-    #     with open(verify_file, "w") as f:
-    #         for entry in results:
-    #             if entry["solution"] is not None:
-    #                 json.dump({
-    #                     "task_id": entry["task_id"],
-    #                     "solution": entry["solution"]
-    #                 }, f)
-    #                 f.write("\n")
-    # fail_ids, correct_ids = verify(dataset_name, verify_file)
-    #
-    # # Update results with success status
-    # hard_buggy_data = []
-    # easy_buggy_data = []
-    # for entry in results:
-    #     if entry["task_id"] in fail_ids:
-    #         entry["is_corrected"] = False
-    #         eval_dict = {
-    #             "model": generator.model,
-    #             "solution": entry["solution"],
-    #             "sol_diff": entry["sol_diff"],
-    #         }
-    #         hard_buggy_data.append(entry["original_data"])
-    #         hard_buggy_data[-1]["debug_results"] = eval_dict
-    #     elif entry["task_id"] in correct_ids:
-    #         entry["is_corrected"] = True
-    #         easy_buggy_data.append(entry["original_data"])
+    save_symbolic_cache(dataset_name, cache)
 
-    for entry in results:
-        eval_dict = {
-            "model": generator.model,
-            "solution": entry["solution"],
-            "sol_diff": entry["sol_diff"],
-        }
-        entry["debug_results"] = eval_dict
-
-    # print("Total hard buggy code generated: {} out of {}".format(len(hard_buggy_data), len(results)))
-
-    # Save the buggy code log
     with open(log_file_prefix + "_correct.json", "w") as f:
         json.dump(results, f, indent=2)
 
-    return results
+    return results, []

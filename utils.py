@@ -83,6 +83,70 @@ def file_diff(str1, str2):
     return delete, add, line_diff_dict
 
 
+def load_symbolic_cache(dataset_name):
+    """
+    Load the per-dataset symbolic acceptance cache.
+    Schema:
+        {
+          "<task_id>": { "<buggy_line>": ["accepted_fixed_line", ...] }
+        }
+    """
+    cache_path = Path("data") / dataset_name / "symbolic_cache.json"
+    if cache_path.exists():
+        try:
+            with open(cache_path, "r") as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
+
+def save_symbolic_cache(dataset_name, cache):
+    """
+    Persist the symbolic acceptance cache back to data/{dataset}/symbolic_cache.json
+    """
+    cache_dir = Path("data") / dataset_name
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    cache_path = cache_dir / "symbolic_cache.json"
+    with open(cache_path, "w") as f:
+        json.dump(cache, f, indent=2)
+
+
+def symbolic_judge(task_id, sol_diff, gt_diff, cache):
+    """
+    Determine whether the solution's diff is symbolically acceptable.
+
+    - gt_diff maps GT -> buggy; we expect solutions to reverse those changes.
+      So expected pairs are (buggy_line, gt_line) from gt_diff values.
+    - sol_diff maps buggy -> fixed; we compare pairs (buggy_line, fixed_line).
+    - cache adds accepted alternatives: cache[task_id][buggy_line] contains a list of
+      previously verified fixed lines.
+
+    Returns: (symbolically_ok: bool, unmatched_pairs: set[(buggy_line, fixed_line)])
+    """
+    # Build expected reverse pairs from gt_diff
+    expected_pairs = set()
+    if gt_diff:
+        for _, v in gt_diff.items():
+            # GT: original -> buggy; reverse is (buggy, original)
+            expected_pairs.add((v.get("modified", "").strip(), v.get("original", "").strip()))
+
+    # Build solution pairs from sol_diff (buggy -> fixed)
+    sol_pairs = set()
+    if sol_diff:
+        for _, v in sol_diff.items():
+            sol_pairs.add((v.get("original", "").strip(), v.get("modified", "").strip()))
+
+    accepted = set(expected_pairs)
+    task_cache = cache.get(task_id, {}) if isinstance(cache, dict) else {}
+    for buggy_line, accepted_list in task_cache.items():
+        for fixed_line in accepted_list:
+            accepted.add((str(buggy_line).strip(), str(fixed_line).strip()))
+
+    unmatched = {p for p in sol_pairs if p not in accepted}
+    return (len(unmatched) == 0), unmatched
+
+
 def align_test_to_solution(solution_code, test_code):
     actual_name_match = re.search(r'def\s+(\w+)\s*\(', solution_code)
     if not actual_name_match:
@@ -259,3 +323,42 @@ def verify(dataset, verify_file):
 
     else:
         raise ValueError(f"Dataset '{dataset}' not supported")
+
+
+def verify_single_solution(dataset_name, item, solution, verify_prefix):
+    """
+    Write a minimal eval file for a single task and call verify().
+    Returns True if the solution passes unit tests, else False.
+    """
+    verify_dir = Path("log") / dataset_name
+    verify_dir.mkdir(parents=True, exist_ok=True)
+
+    try:
+        if dataset_name == "bigcodebench":
+            vf = str(verify_dir / f"{verify_prefix}_single_correct.jsonl")
+            with open(vf, "w") as f:
+                json.dump({"task_id": item["task_id"], "solution": solution}, f)
+                f.write("\n")
+            fail_ids, correct_ids = verify(dataset_name, vf)
+            return item["task_id"] in correct_ids
+
+        elif dataset_name == "livecodebench":
+            vf = str(verify_dir / f"{verify_prefix}_single_correct.json")
+            with open(vf, "w") as f:
+                json.dump([{ "question_id": item["task_id"], "code_list": [solution] }], f, indent=2)
+            fail_ids, correct_ids = verify(dataset_name, vf)
+            return item["task_id"] in correct_ids
+
+        elif dataset_name == "kodcodebench":
+            vf = str(verify_dir / f"{verify_prefix}_single_correct.json")
+            with open(vf, "w") as f:
+                json.dump([{ "task_id": item["task_id"], "solution": [solution], "test": item.get("test") or item["original_data"].get("test") }], f, indent=2)
+            fail_ids, correct_ids = verify(dataset_name, vf)
+            return item["task_id"] in correct_ids
+
+        else:
+            print(f"[verify] Unsupported dataset: {dataset_name}")
+            return False
+    except Exception as e:
+        print(f"[verify_single_solution] Error for {item.get('task_id')}: {e}")
+        return False
