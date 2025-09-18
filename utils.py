@@ -17,8 +17,8 @@ def file_diff(str1, str2):
     line_diff_dict in format: {line_number: ("type": xxx, "original": xxx, "modified": xxx)}
     types are Add [insert str to line xxx], Delete [delete line and move up the next] and Modify.
     """
-    lines1 = [d.strip() for d in str1.splitlines()]
-    lines2 = [d.strip() for d in str2.splitlines()]
+    lines1 = [d.rstrip() for d in str1.splitlines()]
+    lines2 = [d.rstrip() for d in str2.splitlines()]
 
     diff = list(difflib.ndiff(lines1, lines2))
 
