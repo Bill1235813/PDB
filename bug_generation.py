@@ -517,6 +517,11 @@ def bug_correct(data, generator, log_file_prefix, dataset_name):
 
     results = []
     print("Buggy code correction...")
+    # Collect items that fail symbolic check and need batch unit verification
+    to_unit_verify = []  # list of task_ids to verify
+    need_cache_update = {}  # task_id -> unmatched_pairs
+    tid_to_index = {}  # task_id -> results index
+
     for index, item in tqdm.tqdm(enumerate(data)):
         task_id = item.get("task_id")
         buggy_code = item.get("buggy_code")
@@ -558,25 +563,26 @@ def bug_correct(data, generator, log_file_prefix, dataset_name):
         except Exception as e:
             print(f"Error processing task_id {task_id}: {e}")
 
-        # Symbolic first; skip unit tests if symbolically corrected
+        # Note from Miaosen: Symbolic first; defer unit tests to a single batch ONLY at the end to improve throughtput
         symbolically_true, unmatched_pairs = symbolic_judge(task_id, log_entry.get("sol_diff"), gt_diff, cache)
 
         unit_true = False
         if log_entry.get("solution"):
             if symbolically_true:
                 unit_true = True
+                log_entry["is_corrected"] = True
+                # cache any unmatched pairs as newly accepted alternatives
+                if unmatched_pairs:
+                    task_cache = cache.setdefault(task_id, {})
+                    for buggy_line, fixed_line in unmatched_pairs:
+                        task_cache.setdefault(buggy_line, [])
+                        if fixed_line not in task_cache[buggy_line]:
+                            task_cache[buggy_line].append(fixed_line)
             else:
-                unit_true = verify_single_solution(dataset_name, item, log_entry["solution"], Path(log_file_prefix).name)
-
-        if unit_true:
-            log_entry["is_corrected"] = True
-            # cache any unmatched pairs as newly accepted alternatives
-            if unmatched_pairs:
-                task_cache = cache.setdefault(task_id, {})
-                for buggy_line, fixed_line in unmatched_pairs:
-                    task_cache.setdefault(buggy_line, [])
-                    if fixed_line not in task_cache[buggy_line]:
-                        task_cache[buggy_line].append(fixed_line)
+                # Defer unit test: collect for batch verification
+                to_unit_verify.append(task_id)
+                need_cache_update[task_id] = unmatched_pairs
+                log_entry["is_corrected"] = False
         else:
             log_entry["is_corrected"] = False
 
@@ -590,6 +596,76 @@ def bug_correct(data, generator, log_file_prefix, dataset_name):
         log_entry["debug_results"] = eval_dict
 
         results.append(log_entry)
+        tid_to_index[task_id] = len(results) - 1
+
+    # Perform a single batched unit verification for symbolically-failing items
+    if to_unit_verify:
+        verify_dir = Path("log") / dataset_name
+        verify_dir.mkdir(parents=True, exist_ok=True)
+        verify_prefix = Path(log_file_prefix).name
+
+        if dataset_name == "bigcodebench":
+            vf = str(verify_dir / f"{verify_prefix}_single_correct_batch.jsonl")
+            with open(vf, "w") as f:
+                for tid in to_unit_verify:
+                    idx = tid_to_index[tid]
+                    sol = results[idx].get("solution")
+                    if sol:
+                        json.dump({"task_id": tid, "solution": sol}, f)
+                        f.write("\n")
+        elif dataset_name == "livecodebench":
+            vf = str(verify_dir / f"{verify_prefix}_single_correct_batch.json")
+            data_to_write = []
+            for tid in to_unit_verify:
+                idx = tid_to_index[tid]
+                sol = results[idx].get("solution")
+                if sol:
+                    data_to_write.append({
+                        "question_id": results[idx]["task_id"],
+                        "code_list": [sol]
+                    })
+            with open(vf, "w") as f:
+                json.dump(data_to_write, f, indent=2)
+        elif dataset_name == "kodcodebench":
+            vf = str(verify_dir / f"{verify_prefix}_single_correct_batch.json")
+            data_to_write = []
+            for tid in to_unit_verify:
+                idx = tid_to_index[tid]
+                sol = results[idx].get("solution")
+                original_item = results[idx]["original_data"]
+                test_code = original_item.get("test") or original_item.get("original_data", {}).get("test")
+                if sol:
+                    data_to_write.append({
+                        "task_id": results[idx]["task_id"],
+                        "solution": [sol],
+                        "test": test_code
+                    })
+            with open(vf, "w") as f:
+                json.dump(data_to_write, f, indent=2)
+        else:
+            vf = None
+
+        if vf:
+            try:
+                fail_ids, correct_ids = verify(dataset_name, vf)
+            except Exception as e:
+                print(f"[batch verify] Error during verification: {e}")
+                fail_ids, correct_ids = to_unit_verify, []
+
+            # Update results and cache based on batch outcomes
+            for tid in to_unit_verify:
+                idx = tid_to_index[tid]
+                unit_true_final = tid in correct_ids
+                results[idx]["debug_results"]["unit_true"] = unit_true_final
+                results[idx]["is_corrected"] = unit_true_final
+                if unit_true_final:
+                    unmatched_pairs = need_cache_update.get(tid) or set()
+                    if unmatched_pairs:
+                        task_cache = cache.setdefault(tid, {})
+                        for buggy_line, fixed_line in unmatched_pairs:
+                            task_cache.setdefault(buggy_line, [])
+                            if fixed_line not in task_cache[buggy_line]:
+                                task_cache[buggy_line].append(fixed_line)
 
     save_symbolic_cache(dataset_name, cache)
 
