@@ -1,6 +1,8 @@
+import copy
 import os
 import json
 import subprocess
+from copy import deepcopy
 from pathlib import Path
 import ast
 import re
@@ -185,8 +187,11 @@ It returns a list of task_ids that failed and a list of task_ids that passed.
 """
 
 
-def verify(dataset, verify_file):
+def verify(dataset, verify_file, gt_file=None):
     if dataset == "bigcodebench":
+        if gt_file is not None:
+            assert Path(verify_file).parent == Path(verify_file).parent
+            os.environ["BIGCODEBENCH_OVERRIDE_PATH"] = Path(gt_file).name
         workdir = Path(verify_file).parent
         selected_ids = ",".join([json.loads(s)["task_id"] for s in open(verify_file).readlines()])
         result = subprocess.run(
@@ -325,6 +330,77 @@ def verify(dataset, verify_file):
         raise ValueError(f"Dataset '{dataset}' not supported")
 
 
+def build_verify(dataset_name, log_file_prefix, results, sol_field="buggy_code"):
+    if dataset_name == "livecodebench":
+        verify_file = log_file_prefix + "_bug.json"
+        data_to_write = [
+            {
+                "question_id": entry["task_id"],
+                "code_list": [entry[sol_field]]
+            }
+            for entry in results if entry[sol_field] is not None
+        ]
+        if data_to_write:
+            with open(verify_file, "w") as f:
+                json.dump(data_to_write, f, indent=4)
+            return verify_file
+        else:
+            print("No submissions to evaluate.")
+            return None
+    elif dataset_name == "kodcodebench":
+        verify_file = log_file_prefix + "_bug.json"
+        with open(verify_file, "w") as f:
+            data_to_write = [
+                {
+                    "task_id": entry["task_id"],
+                    "solution": [entry[sol_field]],
+                    "test": entry["original_data"]["test"]
+                }
+                for entry in results if entry[sol_field] is not None
+            ]
+            json.dump(data_to_write, f, indent=4)
+        fail_ids, correct_ids = verify(dataset_name, verify_file)
+    elif dataset_name == "bigcodebench":  # bigcodebench
+        verify_file = log_file_prefix + "_bug.jsonl"
+        with open(verify_file, "w") as f:
+            wrote_any = False
+            for entry in results:
+                if entry[sol_field] is not None:
+                    json.dump({
+                        "task_id": entry["task_id"],
+                        "solution": entry[sol_field]
+                    }, f)
+                    f.write("\n")
+                    wrote_any = True
+        if wrote_any:
+            return verify_file
+        else:
+            print("No submissions to evaluate.")
+            return None
+    else:
+        raise ValueError("Unexpected dataset name.")
+
+
+def save_formatted_gt(dataset, log_file_prefix, data):
+    if dataset == "bigcodebench":
+        original_gt_data = json.load(open("data/bigcodebench/bigcodebench-full-data.json"))
+        gt_data = []
+        for d in data:
+            task_id = d["task_id"]
+            while task_id not in original_gt_data:
+                task_id = task_id.rsplit("_", 1)[0]
+            selected = copy.deepcopy(original_gt_data[task_id])
+            selected["task_id"] = d["task_id"]
+            gt_data.append(selected)
+        out_path = f"{log_file_prefix}_sol-data.jsonl"
+        with open(out_path, "w") as f:
+            f.write("\n".join([json.dumps(d) for d in gt_data]))
+            # json.dump(gt_data, f, indent=2)
+    else:
+        raise ValueError(f"Dataset '{dataset}' not supported")
+    return gt_data, out_path
+
+
 def verify_single_solution(dataset_name, item, solution, verify_prefix):
     """
     Write a minimal eval file for a single task and call verify().
@@ -345,14 +421,15 @@ def verify_single_solution(dataset_name, item, solution, verify_prefix):
         elif dataset_name == "livecodebench":
             vf = str(verify_dir / f"{verify_prefix}_single_correct.json")
             with open(vf, "w") as f:
-                json.dump([{ "question_id": item["task_id"], "code_list": [solution] }], f, indent=2)
+                json.dump([{"question_id": item["task_id"], "code_list": [solution]}], f, indent=2)
             fail_ids, correct_ids = verify(dataset_name, vf)
             return item["task_id"] in correct_ids
 
         elif dataset_name == "kodcodebench":
             vf = str(verify_dir / f"{verify_prefix}_single_correct.json")
             with open(vf, "w") as f:
-                json.dump([{ "task_id": item["task_id"], "solution": [solution], "test": item.get("test") or item["original_data"].get("test") }], f, indent=2)
+                json.dump([{"task_id": item["task_id"], "solution": [solution],
+                            "test": item.get("test") or item["original_data"].get("test")}], f, indent=2)
             fail_ids, correct_ids = verify(dataset_name, vf)
             return item["task_id"] in correct_ids
 
