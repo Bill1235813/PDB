@@ -97,7 +97,7 @@ def gen_main(args):
             api_key="local",
             model_type="chat",
             max_tokens = 21000,
-            temperatufre=args.temperature,
+            temperature=args.temperature,
             cache=False,
             )
         print(f"Using local model server: {local_model_name}")
