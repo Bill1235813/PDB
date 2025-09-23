@@ -12,7 +12,7 @@ import logging
 import preprocess
 from pathlib import Path
 from utils import verify, file_diff, load_symbolic_cache, save_symbolic_cache, symbolic_judge, build_verify, \
-    save_formatted_gt
+    save_formatted_gt, mark_editable_lines
 from module import Rewriter, BugInjector, CODE_BLOCK_REGEX, DIFF_STR_PATTERN
 from examples import hard_bug_examples, bug_type_examples
 from collections import defaultdict
@@ -38,22 +38,30 @@ def rewrite(data, dataset_name, log_file_prefix, max_try=2, lang="python", thres
                 if match:
                     log_entry["rewritten_solution"] = match.group(1).strip()
                 else:
-                    log_entry["rewritten_solution"] = response.rewritten_code
-                    print("No match found in the response. Use full response:", response.rewritten_code)
+                    log_entry["rewritten_solution"] = response.rewritten_code.strip()
+                    print("No match found in the response. Use full response:", response.rewritten_code.strip())
             except Exception as e:
                 log_entry["rewritten_solution"] = None
                 print(f"Error processing task_id {task_id}: {e}")
 
-            if log_entry["rewritten_solution"] and calc_codebleu([gt_solution], [log_entry["rewritten_solution"]], lang)["codebleu"] <= threshold:
+            if log_entry["rewritten_solution"] and \
+                    calc_codebleu([gt_solution], [log_entry["rewritten_solution"]], lang)["codebleu"] <= threshold:
                 break
             else:
                 trial += 1
 
         results.append(log_entry)
 
+
     verify_file = build_verify(dataset_name, log_file_prefix + "_rewrite_verify", results,
                                sol_field="rewritten_solution")
-    fail_ids, correct_ids = verify(dataset_name, verify_file)
+    try:
+        fail_ids, correct_ids = verify(dataset_name, verify_file, timeout=3600)
+    except Exception as e:
+        print(f"Error verifying. Save first.")
+        with open(log_file_prefix + "_rewrite.json", "w") as f:
+            json.dump(results, f, indent=2)
+        return results, []
 
     # Update results with success status
     new_data = []
@@ -67,6 +75,10 @@ def rewrite(data, dataset_name, log_file_prefix, max_try=2, lang="python", thres
     print("Rewriting success:", len(new_data), "in", len(results))
     with open(log_file_prefix + "_rewrite.json", "w") as f:
         json.dump(results, f, indent=2)
+
+    for entry in new_data:
+        entry["gt_solution"] = entry["rewritten_solution"]
+    mark_editable_lines(dataset_name, new_data)
     return results, new_data
 
 
@@ -79,8 +91,6 @@ def bug_generate(data, dataset_name, log_file_prefix, bug_per_example, ic_size=4
         print(f"Generating buggy code step {count}")
         for index, item in tqdm.tqdm(enumerate(data)):
             task_id = item.get("task_id") + f"_{count}"
-            if "rewritten_solution" in item:
-                item["gt_solution"] = item["rewritten_solution"]
             gt_solution = item.get("gt_solution")
             task_prompt = item.get("task_prompt")
             log_entry = copy.deepcopy(item)
@@ -94,22 +104,25 @@ def bug_generate(data, dataset_name, log_file_prefix, bug_per_example, ic_size=4
                 bug_desp_str += f"Example {i}: {example[0]}\n{example[1]}\n"
             bug_type.replace("[[bug_description]]", bug_desp_str)
 
+            line_num, line_text = log_entry["editable_lines"][np.random.choice(len(log_entry["editable_lines"]))]
+            line_to_edit = f"{line_num}. {line_text}"
+
             try:
-                response = bug_gen(task_prompt=task_prompt, gt_solution=gt_solution, bug_type=bug_type)
+                response = bug_gen(task_prompt=task_prompt, gt_solution=gt_solution, bug_type=bug_type, line_to_edit=line_to_edit)
                 match = CODE_BLOCK_REGEX.search(response.buggy_code)
                 if match:
                     log_entry["buggy_code"] = match.group(1).strip()
-                    _, _, json_diff = file_diff(gt_solution, log_entry["buggy_code"])
+                    _, _, json_diff = file_diff(gt_solution, log_entry["buggy_code"].strip())
                     if json_diff is not None and len(json_diff) == 1:
                         log_entry["diff"] = json_diff
                         log_entry["bug_count"] = 1
                         results.append(log_entry)
                     else:
                         log_entry["diff"] = None
-                        print("JSON diff wrong format from the response. Full response:", log_entry["buggy_code"])
+                        print("JSON diff wrong format from the response. Full response:", log_entry["buggy_code"].strip())
                 else:
-                    log_entry["buggy_code"] = response.buggy_code
-                    print("No match found in the response. Use full response:", response.buggy_code)
+                    log_entry["buggy_code"] = response.buggy_code.strip()
+                    print("No match found in the response. Use full response:", response.buggy_code.strip())
 
             except Exception as e:
                 print(f"Error processing task_id {task_id}: {e}")
@@ -117,11 +130,18 @@ def bug_generate(data, dataset_name, log_file_prefix, bug_per_example, ic_size=4
     # Verify buggy
     _, formatted_gt = save_formatted_gt(dataset_name, log_file_prefix + f"bug_gen_gt", results)
     verify_file = build_verify(dataset_name, log_file_prefix + "_bug_verify", results, sol_field="buggy_code")
-    fail_ids, correct_ids = verify(dataset_name, verify_file, gt_file=formatted_gt)
+    try:
+        fail_ids, correct_ids = verify(dataset_name, verify_file, gt_file=formatted_gt, timeout=7200)
+    except Exception as e:
+        print(f"Error verifying. Save first.")
+        with open(log_file_prefix + "_bug.json", "w") as f:
+            json.dump(results, f, indent=2)
+        return results, []
 
     new_data = []
     # Update results with success status
     for entry in results:
+        entry["editable_lines"] = len(entry["editable_lines"])
         if entry["task_id"] in fail_ids:
             entry["is_buggy"] = True
             entry["task_id"] = entry["task_id"].rsplit("_", 1)[0]
@@ -384,13 +404,37 @@ def gen_main(args):
     generator = dspy.LM(args.model_name, api_key=api_key, temperature=args.temperature, max_tokens=args.max_tokens)
     dspy.settings.configure(lm=generator)
 
-    if args.rewrite:
-        print("Rewriting code...")
-        _, remain_data = rewrite(raw_data, args.dataset_name, log_file_prefix)
-    else:
-        remain_data = raw_data
+    if args.reload_from_save:
+        print("Reload data...")
+        buggy_data = json.load(open(os.path.join(log_dir, args.reload_from_save)))
+        parsed_prefix = args.reload_from_save.split("__bug.json")[0]
+        formatted_gt = os.path.join(log_dir, parsed_prefix + "_bug_gen_gt.jsonl")
+        verify_file = os.path.join(log_dir, parsed_prefix + "__bug_verify.jsonl")
+        try:
+            fail_ids, correct_ids = verify(args.dataset_name, verify_file, gt_file=formatted_gt, timeout=7200)
+            new_data = []
+            for entry in buggy_data:
+                if entry["task_id"] in fail_ids:
+                    entry["is_buggy"] = True
+                    entry["task_id"] = entry["task_id"].rsplit("_", 1)[0]
+                    new_data.append(entry)
+                elif entry["task_id"] in correct_ids:
+                    entry["is_buggy"] = False
 
-    _, buggy_data = bug_generate(remain_data, args.dataset_name, log_file_prefix, args.bug_per_time)
+            print("Total buggy code generated: {} out of {}".format(len(new_data), len(buggy_data)))
+            buggy_data = new_data
+        except Exception as e:
+            print(f"Error verifying. Save first.")
+            with open(log_file_prefix + "_bug.json", "w") as f:
+                json.dump(buggy_data, f, indent=2)
+    else:
+        if args.rewrite:
+            print("Rewriting code...")
+            _, remain_data = rewrite(raw_data, args.dataset_name, log_file_prefix)
+        else:
+            remain_data = raw_data
+
+        _, buggy_data = bug_generate(remain_data, args.dataset_name, log_file_prefix, args.bug_per_time)
 
     bug_compose(buggy_data, args.max_bugs, args.bug_per_time, output_file)
 
@@ -402,6 +446,7 @@ if __name__ == "__main__":
     parser.add_argument("--model_api_file", type=str, required=True, help="Model API file is required for generation")
     parser.add_argument("--input_file", nargs='+', help="Input file path, under data/{dataset_name}",
                         default="bigcodebench-full-data.json")
+    parser.add_argument("--reload_from_save", type=str, default="", help="Reload from saved dir")
     parser.add_argument("--id_filtering_file", type=str, help="ID filtering file path, under data/{dataset_name}",
                         default="id_filtering.json")
     parser.add_argument("--log_prefix", type=str, help="Log file under log/{dataset_name}",

@@ -9,6 +9,7 @@ import re
 import textwrap
 import pytest
 import difflib
+from module import SIMPLE_CODE_BLOCK_REGEX
 
 
 def file_diff(str1, str2):
@@ -187,7 +188,7 @@ It returns a list of task_ids that failed and a list of task_ids that passed.
 """
 
 
-def verify(dataset, verify_file, gt_file=None):
+def verify(dataset, verify_file, gt_file=None, timeout=300):
     if dataset == "bigcodebench":
         if gt_file is not None:
             assert Path(verify_file).parent == Path(gt_file).parent
@@ -226,7 +227,7 @@ def verify(dataset, verify_file, gt_file=None):
                 cwd=workdir,  # run here
                 capture_output=True,
                 text=True,
-                timeout=300,
+                timeout=timeout,
             )
             print(result.stderr)
         except subprocess.CalledProcessError as e:
@@ -420,6 +421,37 @@ def save_formatted_gt(dataset, log_file_prefix, data):
     else:
         raise ValueError(f"Dataset '{dataset}' not supported")
     return gt_data, out_path
+
+
+def mark_editable_lines(dataset, data):
+    if dataset == "bigcodebench":
+        if len(data) > 0:
+            assert "task_prompt" in data[0]
+            for d in data:
+                code_matches = SIMPLE_CODE_BLOCK_REGEX.findall(d["task_prompt"])
+                if code_matches:
+                    d["frozen_lines"] = len(code_matches[-1].strip().splitlines())
+                else:
+                    d["frozen_lines"] = 0
+                code_lines = d["gt_solution"].splitlines()
+                code_length = len(code_lines)
+                d["gt_length"] = code_length
+                d["editable_lines"] = []
+                for i, l in enumerate(code_lines):
+                    if i >= d["frozen_lines"] and l.strip() != "":
+                        d["editable_lines"].append((i + 1, l))
+    elif dataset == "livecodebench":
+        for d in data:
+            code_lines = d["gt_solution"].splitlines()
+            code_length = len(code_lines)
+            d["frozen_lines"] = 0
+            d["gt_length"] = code_length
+            d["editable_lines"] = []
+            for i, l in enumerate(code_lines):
+                if i >= d["frozen_lines"] and l.strip() != "":
+                    d["editable_lines"].append((i + 1, l))
+    else:
+        raise ValueError("Unexpected dataset name.")
 
 
 def verify_single_solution(dataset_name, item, solution, verify_prefix):

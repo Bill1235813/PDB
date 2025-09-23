@@ -42,6 +42,7 @@ FREE_DEBUG_TEMPLATE = (
 )
 
 CODE_BLOCK_REGEX = re.compile(r"```(?:python)?\s*\n(.*?)```", re.DOTALL | re.IGNORECASE)
+SIMPLE_CODE_BLOCK_REGEX = re.compile(r"```(.*?)```", re.DOTALL | re.IGNORECASE)
 DIFF_STR_PATTERN = re.compile(r"^(\d+): (.*) --> (.*)$")
 
 
@@ -88,12 +89,13 @@ Then, modify the solution by injecting realistic programming errors to simulate 
 Instructions for modifying the code:
 - Delete all comments from the original code and Do NOT add any new comments to the modified code.
 - DO NOT change any other variable names.
-- DO NOT introduce easy bugs such as referencing variable names before declaration, typing errors.
-- Please ONLY choose and modify one line to induce a HARD bug to the task.
+- DO NOT introduce easy bugs such as referencing variable names before declaration, typos.
+- ONLY modify one line to induce a HARD bug to the task.
+- DO NOT delete a for, while, if, etc. claude, which can cause an indentation error. If the specified line is like that, modify this line instead of delete; the else claude is fine to delete.
 
-Output format:
+You should output:
 - A single code block with the final, modified version of the buggy code with NO comments.
-You need to check there is NO COMMENT inside your generation for the final step.
+- Check there is NO COMMENT inside your generation for the final step.
 Output format (follow *exactly*):
 ```python
 [Your Buggy Code Here]
@@ -101,6 +103,7 @@ Output format (follow *exactly*):
     task_prompt = dspy.InputField(desc="The programming task description for context.")
     correct_solution = dspy.InputField(desc="A correct Python code solution.")
     bug_type = dspy.InputField(desc="Type of bug to add.")
+    line_to_edit = dspy.InputField(desc="The line to edit.")
     buggy_solution = dspy.OutputField(desc="The same Python code with a single-line bug introduced.")
 
 
@@ -110,6 +113,7 @@ class Rewriter(dspy.Module):
         self.rewrite = dspy.Predict(RewriteSolution)
 
     def forward(self, task_prompt, gt_solution):
+        # TODO: should add a note not changing the first few frozen lines
         prediction = self.rewrite(task_prompt=task_prompt, original_solution=gt_solution)
         rewritten_code = prediction.rewritten_code
 
@@ -123,12 +127,12 @@ class BugInjector(dspy.Module):
         super().__init__()
         self.introduce_bug = dspy.Predict(IntroduceBug)
 
-    def forward(self, task_prompt, gt_solution, bug_type):
+    def forward(self, task_prompt, gt_solution, bug_type, line_to_edit):
         buggy_prediction = self.introduce_bug(
             task_prompt=task_prompt,
             correct_solution=gt_solution,
             bug_type=bug_type,
-
+            line_to_edit=line_to_edit
         )
         buggy_code = buggy_prediction.buggy_solution
 
