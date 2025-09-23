@@ -190,31 +190,58 @@ It returns a list of task_ids that failed and a list of task_ids that passed.
 def verify(dataset, verify_file, gt_file=None):
     if dataset == "bigcodebench":
         if gt_file is not None:
-            assert Path(verify_file).parent == Path(verify_file).parent
+            assert Path(verify_file).parent == Path(gt_file).parent
             os.environ["BIGCODEBENCH_OVERRIDE_PATH"] = Path(gt_file).name
+        else:
+            os.environ.pop("BIGCODEBENCH_OVERRIDE_PATH", None)
         workdir = Path(verify_file).parent
         selected_ids = ",".join([json.loads(s)["task_id"] for s in open(verify_file).readlines()])
-        result = subprocess.run(
-            [
-                "bigcodebench.evaluate",
-                "--execution", "local",
-                "--split", "instruct",
-                "--subset", "full",
-                "--samples", Path(verify_file).name,  # basename only
-                "--selective_evaluate", selected_ids,
-                "--no_gt",
-            ],
-            cwd=workdir,  # run here
-            capture_output=True,
-            text=True
-        )
-        print(result.stderr)
 
         base_name = Path(verify_file).with_suffix("").name
         candidates = [
             workdir / f"{base_name}_eval_results.json",  # normal case (.jsonl)
-            workdir / f"{base_name}.json",
+            workdir / f"{base_name}_pass_at_k.json",
         ]
+        try:
+            candidates[0].unlink()
+            print(f"Removed existing file: {candidates[0]}")
+        except FileNotFoundError:
+            pass
+        try:
+            candidates[1].unlink()
+            print(f"Removed existing file: {candidates[1]}")
+        except FileNotFoundError:
+            pass
+        try:
+            result = subprocess.run(
+                [
+                    "bigcodebench.evaluate",
+                    "--execution", "local",
+                    "--split", "instruct",
+                    "--subset", "full",
+                    "--samples", Path(verify_file).name,  # basename only
+                    "--selective_evaluate", selected_ids,
+                    "--no_gt",
+                ],
+                cwd=workdir,  # run here
+                capture_output=True,
+                text=True,
+                timeout=300,
+            )
+            print(result.stderr)
+        except subprocess.CalledProcessError as e:
+            # This block runs if the command fails (returns non-zero exit code)
+            print("Command failed with an error.")
+            print(f"Return Code: {e.returncode}")
+            print("STDOUT:", e.stdout)
+            print("STDERR:", e.stderr)
+        except subprocess.TimeoutExpired as e:
+            # This block runs if the command takes too long
+            print("Command timed out!")
+            print("STDOUT:", e.stdout)
+            print("STDERR:", e.stderr)
+        except TypeError:
+            print("Error: A command argument was not a string. Check your variables.")
 
         for p in candidates:
             if p.exists():
@@ -330,9 +357,9 @@ def verify(dataset, verify_file, gt_file=None):
         raise ValueError(f"Dataset '{dataset}' not supported")
 
 
-def build_verify(dataset_name, log_file_prefix, results, sol_field="buggy_code"):
+def build_verify(dataset_name, log_file_prefix, results, sol_field="solution"):
     if dataset_name == "livecodebench":
-        verify_file = log_file_prefix + "_bug.json"
+        verify_file = log_file_prefix + ".json"
         data_to_write = [
             {
                 "question_id": entry["task_id"],
@@ -347,21 +374,8 @@ def build_verify(dataset_name, log_file_prefix, results, sol_field="buggy_code")
         else:
             print("No submissions to evaluate.")
             return None
-    elif dataset_name == "kodcodebench":
-        verify_file = log_file_prefix + "_bug.json"
-        with open(verify_file, "w") as f:
-            data_to_write = [
-                {
-                    "task_id": entry["task_id"],
-                    "solution": [entry[sol_field]],
-                    "test": entry["original_data"]["test"]
-                }
-                for entry in results if entry[sol_field] is not None
-            ]
-            json.dump(data_to_write, f, indent=4)
-        fail_ids, correct_ids = verify(dataset_name, verify_file)
     elif dataset_name == "bigcodebench":  # bigcodebench
-        verify_file = log_file_prefix + "_bug.jsonl"
+        verify_file = log_file_prefix + ".jsonl"
         with open(verify_file, "w") as f:
             wrote_any = False
             for entry in results:
@@ -382,6 +396,13 @@ def build_verify(dataset_name, log_file_prefix, results, sol_field="buggy_code")
 
 
 def save_formatted_gt(dataset, log_file_prefix, data):
+    """
+    Saves formatted ground truth data to file
+    :param dataset:
+    :param log_file_prefix:
+    :param data:
+    :return:
+    """
     if dataset == "bigcodebench":
         original_gt_data = json.load(open("data/bigcodebench/bigcodebench-full-data.json"))
         gt_data = []
@@ -392,7 +413,7 @@ def save_formatted_gt(dataset, log_file_prefix, data):
             selected = copy.deepcopy(original_gt_data[task_id])
             selected["task_id"] = d["task_id"]
             gt_data.append(selected)
-        out_path = f"{log_file_prefix}_sol-data.jsonl"
+        out_path = f"{log_file_prefix}.jsonl"
         with open(out_path, "w") as f:
             f.write("\n".join([json.dumps(d) for d in gt_data]))
             # json.dump(gt_data, f, indent=2)

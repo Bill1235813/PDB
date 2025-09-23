@@ -1,6 +1,9 @@
 import json
+import os
 import numpy as np
 from utils import save_formatted_gt, build_verify, verify
+from collections import defaultdict
+from argparse import ArgumentParser
 
 
 # from codebleu import calc_codebleu
@@ -8,8 +11,9 @@ from utils import save_formatted_gt, build_verify, verify
 
 class Evaluator:
     def __init__(self, args, results, formatted_gt=None):
-        self.dataset = args.dataset
+        self.dataset = args.dataset_name
         self.output_dir = args.output_dir
+        self.model_name = args.model_name
         self.results = results
         self.ids = [s["task_id"] for s in self.results]
         # Support both top-level fields and nested under original_data
@@ -30,7 +34,9 @@ class Evaluator:
                           self.results]
 
         if formatted_gt is None:
-            _, self.formatted_gt = save_formatted_gt(self.dataset, self.output_dir + f"/{self.dataset}/unit_test_gt", results)
+            _, self.formatted_gt = save_formatted_gt(self.dataset,
+                                                     self.output_dir + f"/{self.dataset}/{self.model_name}_unit_test_gt",
+                                                     results)
 
         self.count = len(self.ids)
         self.metrics = {
@@ -39,7 +45,7 @@ class Evaluator:
             # "CodeBLEU": self.code_bleu
         }
 
-        self.scores = {metrics: [] for metrics in self.metrics}
+        self.scores = {metrics: {} for metrics in self.metrics}
 
     def run_evaluation(self):
         if self.count == 0:
@@ -48,13 +54,17 @@ class Evaluator:
             for name, metric in self.metrics.items():
                 print(f"{name}:", metric())
             self.save_results()
+        return self.scores
 
     def unit_score(self):
-        verify_file = build_verify(self.dataset, self.output_dir + f"/{self.dataset}/unit_test", self.results)
+        verify_file = build_verify(self.dataset,
+                                   self.output_dir + f"/{self.dataset}/{self.model_name}_unit_test_verify",
+                                   [{"task_id": idx, "solution": pred} for idx, pred in zip(self.ids, self.pred)])
         fail_ids, correct_ids = verify(self.dataset, verify_file, gt_file=self.formatted_gt)
         fail_ids, correct_ids = set(fail_ids), set(correct_ids)
-        self.scores["Unit score"] = [0 if idx in fail_ids else 1 for idx in self.ids]
-        return "Unit score", len(fail_ids) / self.count
+        for idx in self.ids:
+            self.scores["Unit score"][idx] = 0 if idx in fail_ids else 1
+        return "Unit score", len(correct_ids) / self.count
 
     def _norm(self, s):
         """Normalize string by stripping whitespace."""
@@ -109,8 +119,6 @@ class Evaluator:
         Evaluates predicted diffs against ground truth diffs, using symbolic
         verification for non-trivial matches.
         """
-        total_precision, total_recall, total_f1 = 0, 0, 0
-
         # # Load cache for acceptable alternatives
         # with open("data/livecodebench/symbolic_cache.json", "r") as f:
         #     cache = json.load(f)
@@ -169,19 +177,23 @@ class Evaluator:
 
             total_pred_corrects[task_id] = pred_corrects
 
-        # 2. Build and run verification for semantically complex cases
-        verify_file = build_verify(self.dataset, self.output_dir + f"/{self.dataset}/deep_test", deep_test, sol_field="solution")
-        _, temp_gt = save_formatted_gt(self.dataset, self.output_dir + f"/{self.dataset}/deep_test_gt", deep_test)
-        fail_ids, correct_ids = verify(self.dataset, verify_file, gt_file=temp_gt)
+        if len(deep_test) > 0:
+            # 2. Build and run verification for semantically complex cases
+            verify_file = build_verify(self.dataset,
+                                       self.output_dir + f"/{self.dataset}/{self.model_name}_deep_test_verify", deep_test,
+                                       sol_field="solution")
+            _, temp_gt = save_formatted_gt(self.dataset,
+                                           self.output_dir + f"/{self.dataset}/{self.model_name}_deep_test_gt", deep_test)
+            fail_ids, correct_ids = verify(self.dataset, verify_file, gt_file=temp_gt)
 
-        # 3. Update correctness based on verification results
-        for correct_id in correct_ids:
-            try:
-                task_id, line = correct_id.rsplit('_', 1)
-                if task_id in total_pred_corrects:
-                    total_pred_corrects[task_id].add(line)
-            except ValueError:
-                print(f"Warning: Could not parse task_id and line from '{correct_id}'")
+            # 3. Update correctness based on verification results
+            for correct_id in correct_ids:
+                try:
+                    task_id, line = correct_id.rsplit('_', 1)
+                    if task_id in total_pred_corrects:
+                        total_pred_corrects[task_id].add(line)
+                except ValueError:
+                    print(f"Warning: Could not parse task_id and line from '{correct_id}'")
 
         # 4. Calculate Precision, Recall, and F1
         total_precision, total_recall, total_f1 = 0, 0, 0
@@ -209,7 +221,7 @@ class Evaluator:
             total_recall += recall
             total_f1 += f1
 
-            self.scores["Symbolic debugging scores"].append((precision, recall, f1))
+            self.scores["Symbolic debugging scores"][idx] = (precision, recall, f1)
 
         return "Precision", total_precision / self.count, "Recall", total_recall / self.count, "F1", total_f1 / self.count
 
@@ -219,21 +231,44 @@ class Evaluator:
     #     return np.mean(self.scores["CodeBLEU"]) if self.scores["CodeBLEU"] else 0.0
 
     def save_results(self):
-        for idx, result in enumerate(self.results):
-            result["scores"] = {
-                name: scores[idx] for name, scores in self.scores.items()
-            }
+        if self.results:
+            with open(
+                    self.output_dir + f"/{self.dataset}/{self.model_name}_round_{self.results[0]['round']}_scores.json",
+                    "w") as f:
+                json.dump(self.scores, f, indent=2)
 
 
 if __name__ == "__main__":
-    from argparse import ArgumentParser
-
     parser = ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="bigcodebench")
-    parser.add_argument("--output_dir", type=str, default="output")
+    parser.add_argument("--dataset_name", type=str, default="bigcodebench")
+    parser.add_argument("--input_file", type=str, default="gpt-4o_on_buggy_code_0923-0106.json_correct.json")
+    parser.add_argument("--output_dir", type=str, default="eval_measure")
+    parser.add_argument("--model_name", type=str, default="gpt-4o")
+    parser.add_argument("--max_iter", type=int, default=2, help="Maximum number of add-bug iterations")
     args = parser.parse_args()
+    args.model_name = args.model_name.split("/")[-1]
 
-    results = json.load(open("output/bigcodebench/buggy_code_test.json"))
-    evaluator = Evaluator(args, results)
-    evaluator.run_evaluation()
-    print(evaluator.results[0])
+    eval_dir = os.path.join(args.output_dir, args.dataset_name)
+    if not os.path.exists(eval_dir):
+        os.makedirs(eval_dir)
+
+    results = json.load(open(f"eval/{args.dataset_name}/{args.input_file}"))
+    grouped = defaultdict(list)
+    grouped_dict = defaultdict(dict)
+    for item in results:
+        grouped[item["round"]].append(item)
+        task_id = item["task_id"]
+        grouped_dict[item["round"]][task_id] = item
+
+    assert args.max_iter in grouped.keys()
+    scores = None
+    for i, group in grouped.items():
+        print("Evaluate round", i)
+        if scores:
+            for task_id, value in scores["Unit score"].items():
+                if value == 1:
+                    grouped_dict[i][task_id]["debug_results"] = grouped_dict[i - 1][task_id]["debug_results"]
+
+        evaluator = Evaluator(args, group)
+        scores = evaluator.run_evaluation()
+    # print(evaluator.results[0])
