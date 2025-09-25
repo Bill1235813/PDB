@@ -221,7 +221,7 @@ class Evaluator:
             total_recall += recall
             total_f1 += f1
 
-            self.scores["Symbolic debugging scores"][idx] = (precision, recall, f1)
+            self.scores["Symbolic debugging scores"][task_id] = (precision, recall, f1)
 
         return "Precision", total_precision / self.count, "Recall", total_recall / self.count, "F1", total_f1 / self.count
 

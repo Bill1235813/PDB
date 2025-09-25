@@ -228,7 +228,11 @@ def eval_main(args):
         model_api_file = os.path.join("keys", args.model_api_file)
     log_file_prefix = os.path.join(log_dir, args.log_prefix) + "_" + time_to_add + "_"
     eval_file = args.input_file[0].rsplit(".")[0]
-    output_file = os.path.join(output_dir, args.output_prefix) + f"_on_{eval_file}.json"
+    if not args.output_prefix:
+        output_prefix = args.model_name.split("/")[-1]
+    else:
+        output_prefix = args.output_prefix
+    output_file = os.path.join(output_dir, output_prefix) + f"_on_{eval_file}.json"
 
     # Load the dataset
     if len(args.input_file) == 1:
@@ -296,7 +300,7 @@ if __name__ == "__main__":
     parser.add_argument("--log_prefix", type=str, help="Log file under log/{dataset_name}",
                         default="log_eval")
     parser.add_argument("--output_prefix", type=str, help="Output file path, under eval/{dataset_name}",
-                        default="gpt-4o")
+                        default="")
     parser.add_argument("--max_iter", type=int, default=2, help="Maximum number of add-bug iterations")
     parser.add_argument("--max_tokens", type=int, default=4000, help="Maximum number of tokens")
     parser.add_argument("--temperature", type=float, default=0.7, help="Temperature for the generator")
