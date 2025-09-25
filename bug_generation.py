@@ -323,7 +323,7 @@ def bug_compose(buggy_data, max_bugs, compose_per_example, output_file):
     all_bug_flatten = []
     for all_bug in all_bugs.values():
         for item in all_bug:
-            task_id = item["task_id"] + f"_{id_counter[item["task_id"]]}"
+            task_id = item["task_id"] + f"_{id_counter[item['task_id']]}"
             id_counter[item["task_id"]] += 1
             item["task_id"] = task_id
             all_bug_flatten.append(item)
