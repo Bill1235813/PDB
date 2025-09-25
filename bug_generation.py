@@ -52,7 +52,6 @@ def rewrite(data, dataset_name, log_file_prefix, max_try=2, lang="python", thres
 
         results.append(log_entry)
 
-
     verify_file = build_verify(dataset_name, log_file_prefix + "_rewrite_verify", results,
                                sol_field="rewritten_solution")
     try:
@@ -108,7 +107,8 @@ def bug_generate(data, dataset_name, log_file_prefix, bug_per_example, ic_size=4
             line_to_edit = f"{line_num}. {line_text}"
 
             try:
-                response = bug_gen(task_prompt=task_prompt, gt_solution=gt_solution, bug_type=bug_type, line_to_edit=line_to_edit)
+                response = bug_gen(task_prompt=task_prompt, gt_solution=gt_solution, bug_type=bug_type,
+                                   line_to_edit=line_to_edit)
                 match = CODE_BLOCK_REGEX.search(response.buggy_code)
                 if match:
                     log_entry["buggy_code"] = match.group(1).strip()
@@ -119,7 +119,8 @@ def bug_generate(data, dataset_name, log_file_prefix, bug_per_example, ic_size=4
                         results.append(log_entry)
                     else:
                         log_entry["diff"] = None
-                        print("JSON diff wrong format from the response. Full response:", log_entry["buggy_code"].strip())
+                        print("JSON diff wrong format from the response. Full response:",
+                              log_entry["buggy_code"].strip())
                 else:
                     log_entry["buggy_code"] = response.buggy_code.strip()
                     print("No match found in the response. Use full response:", response.buggy_code.strip())
@@ -322,9 +323,10 @@ def bug_compose(buggy_data, max_bugs, compose_per_example, output_file):
     all_bug_flatten = []
     for all_bug in all_bugs.values():
         for item in all_bug:
-            item["task_id"] += f"_{id_counter['task_id']}"
+            task_id = item["task_id"] + f"_{id_counter[item["task_id"]]}"
+            id_counter[item["task_id"]] += 1
+            item["task_id"] = task_id
             all_bug_flatten.append(item)
-            id_counter["task_id"] += 1
 
     # Save the buggy code
     print("Saving composed buggy code to", output_file)
