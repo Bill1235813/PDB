@@ -77,7 +77,6 @@ def rewrite(data, dataset_name, log_file_prefix, max_try=2, lang="python", thres
 
     for entry in new_data:
         entry["gt_solution"] = entry["rewritten_solution"]
-    mark_editable_lines(dataset_name, new_data)
     return results, new_data
 
 
@@ -436,6 +435,7 @@ def gen_main(args):
         else:
             remain_data = raw_data
 
+        mark_editable_lines(args.dataset_name, remain_data)
         _, buggy_data = bug_generate(remain_data, args.dataset_name, log_file_prefix, args.bug_per_time)
 
     bug_compose(buggy_data, args.max_bugs, args.bug_per_time, output_file)
