@@ -1,46 +1,57 @@
 import json
 import os
-import numpy as np
-from utils import save_formatted_gt, build_verify, verify
+import copy
+from utils import save_formatted_gt, build_verify_unit_test, verify_unit_test, file_diff, parse_diff_to_blocks, \
+    verify_block_single_diff, expand_blocks_to_diff, rstrip_lines, apply_diff
 from collections import defaultdict
 from argparse import ArgumentParser
 
 
-# from codebleu import calc_codebleu
-
-
 class Evaluator:
-    def __init__(self, args, results, formatted_gt=None):
+    def __init__(self, args, results):
         self.dataset = args.dataset_name
         self.output_dir = args.output_dir
         self.model_name = args.model_name
+        self.stride = args.stride
+        self.precision_tol = args.precision_tolerance
         self.results = results
         self.ids = [s["task_id"] for s in self.results]
-        # Support both top-level fields and nested under original_data
-        self.gt = [
-            (s["gt_solution"] if "gt_solution" in s else s["original_data"].get("gt_solution"))
-            for s in self.results
-        ]
-        self.buggy_code = [
-            (s["buggy_code"] if "buggy_code" in s else s["original_data"]["buggy_code"])
-            for s in self.results
-        ]
-        self.pred = [s["debug_results"]["solution"] for s in self.results]
-        self.gt_diff = [
-            (s["diff"] if "diff" in s else s["original_data"]["diff"]) for s in self.results
-        ]
-        self.pred_diff = [s["debug_results"]["sol_diff"] for s in self.results]
-        self.unit_true = [s["debug_results"]["unit_true"] if "unit_true" in s["debug_results"] else None for s in
-                          self.results]
 
-        if formatted_gt is None:
-            _, self.formatted_gt = save_formatted_gt(self.dataset,
-                                                     self.output_dir + f"/{self.dataset}/{self.model_name}_unit_test_gt",
-                                                     results)
+        self.gt, self.buggy_code, self.pred, self.gt_diff, self.pred_diff = [], [], [], [], []
+        for s in self.results:
+            if "gt_diff" in s:
+                gt_diff = s["gt_diff"]
+            else:
+                _, _, gt_diff = file_diff(s["buggy_code"], s["gt_solution"])
+            ver_gt_diff, err_str = verify_block_single_diff(gt_diff, block_count=s["bug_count"], stride=self.stride)
+            if ver_gt_diff:
+                self.gt_diff.append(gt_diff)
+            else:
+                continue
+                raise ValueError(err_str)
+
+            if "gt_solution" in s:
+                self.gt.append(rstrip_lines(s["gt_solution"]))
+            else:
+                raise KeyError("No GT solution found.")
+            if "buggy_code" in s:
+                self.buggy_code.append(rstrip_lines(s["buggy_code"]))
+            else:
+                raise KeyError("No buggy code found.")
+            if "debug_results" in s and "solution" in s["debug_results"]:
+                self.pred.append(rstrip_lines(s["debug_results"]["solution"]))
+            else:
+                raise KeyError("No predicted solution found.")
+
+            if "debug_results" in s and "pred_diff" in s["debug_results"]:
+                self.pred_diff.append(s["debug_results"]["pred_diff"])
+            else:
+                _, _, pred_diff = file_diff(s["buggy_code"], s["debug_results"]["solution"])
+                self.pred_diff.append(pred_diff)
 
         self.count = len(self.ids)
         self.metrics = {
-            "Symbolic debugging scores": self.symbolic_line_by_line,
+            "Symbolic block scores": self.symbolic_block_score,
             "Unit score": self.unit_score
             # "CodeBLEU": self.code_bleu
         }
@@ -52,165 +63,194 @@ class Evaluator:
             print("No task to evaluate!")
         else:
             for name, metric in self.metrics.items():
-                print(f"{name}:", metric())
+                print(f"{name}:", metric(name))
             self.save_results()
         return self.scores
 
-    def unit_score(self):
-        verify_file = build_verify(self.dataset,
-                                   self.output_dir + f"/{self.dataset}/{self.model_name}_unit_test_verify",
-                                   [{"task_id": idx, "solution": pred} for idx, pred in zip(self.ids, self.pred)])
-        fail_ids, correct_ids = verify(self.dataset, verify_file, gt_file=self.formatted_gt)
+    def unit_score(self, metric_name):
+        verify_file = build_verify_unit_test(self.dataset,
+                                             self.output_dir + f"/{self.dataset}/{self.model_name}_unit_test_verify",
+                                             [{"task_id": idx, "solution": pred} for idx, pred in
+                                              zip(self.ids, self.pred)])
+        _, formatted_gt = save_formatted_gt(self.dataset,
+                                            self.output_dir + f"/{self.dataset}/{self.model_name}_unit_test_gt",
+                                            self.results)
+        fail_ids, correct_ids = verify_unit_test(self.dataset, verify_file, gt_file=formatted_gt, timeout=7200)
         fail_ids, correct_ids = set(fail_ids), set(correct_ids)
         for idx in self.ids:
-            self.scores["Unit score"][idx] = 0 if idx in fail_ids else 1
-        return "Unit score", len(correct_ids) / self.count
+            self.scores[metric_name][idx] = 0 if idx in fail_ids else 1
+        return metric_name, len(correct_ids) / self.count
 
-    def _norm(self, s):
-        """Normalize string by stripping whitespace."""
-        return (s or "").strip()
+    def _is_equal(self, pred_edit, gt_edit):
+        """Check if a predicted edit is the equal to a ground truth edit."""
+        return (pred_edit['type'] == gt_edit['type'] and
+                pred_edit['original'] == gt_edit['original'] and
+                pred_edit['modified'] == gt_edit['modified'])
 
-    def _is_inverse(self, pred_edit, gt_edit):
-        """Check if a predicted edit is the inverse of a ground truth edit."""
-        p_type = pred_edit['type']
-        g_type = gt_edit['type']
-        p_orig = self._norm(pred_edit['original'])
-        p_mod = self._norm(pred_edit['modified'])
-        g_orig = self._norm(gt_edit['original'])
-        g_mod = self._norm(gt_edit['modified'])
-
-        if p_type == 'Add' and g_type == 'Delete' and p_mod == g_orig:
+    def _line_set_match(self, pred_lines, gt_lines, top_btm_line):
+        if gt_lines & pred_lines:
             return True
-        if p_type == 'Delete' and g_type == 'Add' and p_orig == g_mod:
+        elif not gt_lines and not pred_lines:
             return True
-        if p_type == 'Modify' and g_type == 'Modify' and p_orig == g_mod and p_mod == g_orig:
+        # e.g., gt edits the top line but pred keeps it unchanged.
+        elif not gt_lines and top_btm_line in pred_lines:
             return True
-        return False
+        # e.g., pred edits the top line but gt keeps it unchanged.
+        elif not pred_lines and top_btm_line in gt_lines:
+            return True
+        else:
+            return False
 
-    def _apply_single_edit(self, source_code, line_num_str, edit_obj):
-        """Applies a single line change from a diff to the source code."""
-        # Split source into lines, keeping line endings
-        lines = source_code.splitlines(True)
-        # Diff line numbers are typically 1-based, adjust to 0-based index
-        line_idx = int(line_num_str) - 1
-        edit_type = edit_obj['type']
-
-        modified_line_content = edit_obj['modified']
-        # Ensure the new line has a newline character for consistency
-        if not modified_line_content.endswith('\n'):
-            modified_line_content += '\n'
-
-        if edit_type == 'Add':
-            # Insert the new line at the specified index
-            lines.insert(line_idx, modified_line_content)
-        elif edit_type == 'Delete':
-            # Delete the line at the specified index
-            if 0 <= line_idx < len(lines):
-                del lines[line_idx]
-        elif edit_type == 'Modify':
-            # Replace the line at the specified index
-            if 0 <= line_idx < len(lines):
-                lines[line_idx] = modified_line_content
-
-        return "".join(lines)
-
-    def symbolic_line_by_line(self):
+    def symbolic_block_score(self, metric_name):
         """
         Evaluates predicted diffs against ground truth diffs, using symbolic
         verification for non-trivial matches.
         """
-        # # Load cache for acceptable alternatives
-        # with open("data/livecodebench/symbolic_cache.json", "r") as f:
-        #     cache = json.load(f)
-
         deep_test = []
-        total_pred_corrects = {}
+        total_pred_corrects = defaultdict(list)
+        matched_blocks = defaultdict(dict)
+        unmatched_gt = defaultdict(dict)
+        unmatched_pred = defaultdict(dict)
 
-        # 1. First Pass: Find inverse matches and identify candidates for deep testing
-        for idx, (gt_code, gt_diff, pred_diff) in enumerate(zip(self.gt, self.gt_diff, self.pred_diff)):
-            task_id = self.ids[idx]
-            gt_diff_copy = gt_diff.copy()
-            pred_corrects = set()
+        # Find matches and identify candidates for deep testing
+        for code_id, (buggy, gt_diff, pred_diff) in enumerate(zip(self.buggy_code, self.gt_diff, self.pred_diff)):
+            task_id = self.ids[code_id]
+            pred_corrects = []
+            all_gt_blocks = parse_diff_to_blocks(gt_diff)
+            remain_gt_blocks = copy.deepcopy(all_gt_blocks)
 
-            for pred_line, pred_edit in pred_diff.items():
-                # Case 1: line number in gt_diff and edits are opposite (inverse)
-                if pred_line in gt_diff_copy and self._is_inverse(pred_edit, gt_diff_copy[pred_line]):
-                    pred_corrects.add(pred_line)
-                    del gt_diff_copy[pred_line]
-
-                # Case 2: line number in gt_diff and edits are different
-                elif pred_line in gt_diff_copy:
-                    alternative_solution = self._apply_single_edit(gt_code, pred_line, pred_edit)
-                    deep_test.append({
-                        "task_id": f"{task_id}_{pred_line}",
-                        "solution": alternative_solution
+            # First pass, only find exact matches
+            for line_no_str, v in list(pred_diff.items())[::-1]:
+                line_no_gt = str(int(line_no_str))
+                if line_no_gt in gt_diff and self._is_equal(v, gt_diff[line_no_gt]):
+                    pred_corrects.append({
+                        "block_start": int(line_no_str),
+                        "block_end": int(line_no_str),
+                        "diff": {line_no_str: v},
+                        "block_id": -1,
+                        "gt_match_count": 1
                     })
-                    del gt_diff_copy[pred_line]
+                    del gt_diff[line_no_gt]
+                    del pred_diff[line_no_str]
+                    remain_gt_blocks = [s for s in remain_gt_blocks if s.get("block_start") != line_no_gt]
 
-                # Case 3: line number not in gt_diff but an opposite edit exists elsewhere
+            # Second pass, parse to blocks and find block matches
+            remain_gt_blocks = remain_gt_blocks[::-1]
+            remain_pred_blocks = parse_diff_to_blocks(pred_diff)[::-1]
+            buggy_lines = buggy.splitlines()
+            for b_no, pred_block in enumerate(remain_pred_blocks):
+                # 2.1 Check if a prediction block wraps a gt block of edits
+                matched_gt_block = []
+                for gt_block in remain_gt_blocks:
+                    if pred_block["block_start"] <= gt_block["block_start"] <= pred_block["block_end"]:
+                        matched_gt_block.append(gt_block)
+                # 2.2 Check if a prediction block is "near" a gt block
+                if not len(matched_gt_block):
+                    if b_no < len(remain_pred_blocks) - 1:
+                        pre_pred_lines = set(
+                            [buggy_lines[idx - 1] for idx in
+                             range(remain_pred_blocks[b_no + 1]["block_end"] + 1, pred_block["block_start"])])
+                    else:
+                        pre_pred_lines = set([buggy_lines[idx - 1] for idx in range(0, pred_block["block_start"])])
+                    if b_no > 0:
+                        post_pred_lines = set(
+                            [buggy_lines[idx - 1] for idx in
+                             range(pred_block["block_end"] + 1, remain_pred_blocks[b_no - 1]["block_start"])])
+                    else:
+                        post_pred_lines = set(
+                            [buggy_lines[idx - 1] for idx in range(pred_block["block_end"] + 1, len(buggy_lines))])
+                    for gt_block in remain_gt_blocks:
+                        pre_gt_lines = set(
+                            [buggy_lines[gt_block["block_start"] - idx - 1] for idx in range(1, self.stride + 1) if
+                             gt_block["block_start"] - idx > 0])
+                        post_gt_lines = set(
+                            [buggy_lines[gt_block["block_start"] + idx - 1] for idx in range(1, self.stride + 1) if
+                             gt_block["block_start"] + idx <= len(buggy_lines)])
+                        # check if line sets have at least one match
+                        if (self._line_set_match(pre_pred_lines, pre_gt_lines, buggy_lines[0]) and
+                            self._line_set_match(post_pred_lines, post_gt_lines, buggy_lines[-1])):
+                            matched_gt_block.append(gt_block)
+                            break
+                # 2.3 Check if a prediction block is distant but identical to a gt block
+                if not len(matched_gt_block) and len(pred_block["diff"]) == 1:
+                    for gt_block in remain_gt_blocks:
+                        if self._is_equal(list(pred_block["diff"].values())[0], list(gt_block["diff"].values())[0]):
+                            matched_gt_block.append(gt_block)
+                            break
+                # There may be other possible cases ...
+
+                # Update and construct test examples
+                if len(matched_gt_block):
+                    matched_gt_block_ids = [b["block_id"] for b in matched_gt_block]
+                    start_block, end_block = min(matched_gt_block_ids), max(matched_gt_block_ids)
+                    pred_block["block_id"] = start_block
+                    test_block = all_gt_blocks[:start_block] + [pred_block] + all_gt_blocks[end_block + 1:]
+                    test_diff = expand_blocks_to_diff(test_block)
+                    test_solution = apply_diff(buggy, test_diff)
+                    deep_test.append({
+                        "task_id": f"{task_id}_{b_no}",
+                        "solution": test_solution
+                    })
+                    remain_gt_blocks = [b for b in remain_gt_blocks if b not in matched_gt_block]
+                    matched_blocks[task_id][f"{task_id}_{b_no}"] = {
+                        "pred_block": pred_block,
+                        "gt_blocks": matched_gt_block
+                    }
                 else:
-                    # Find the closest inverse edit in the ground truth
-                    closest_inverse_gt_line = None
-                    min_distance = float('inf')
+                    unmatched_pred[task_id] |= expand_blocks_to_diff([pred_block])
 
-                    for gt_line, gt_edit in gt_diff_copy.items():
-                        if self._is_inverse(pred_edit, gt_edit):
-                            distance = abs(int(pred_line) - int(gt_line))
-                            if distance < min_distance:
-                                min_distance = distance
-                                closest_inverse_gt_line = gt_line
-
-                    if closest_inverse_gt_line:
-                        gt_edit_to_apply = gt_diff_copy[closest_inverse_gt_line]
-
-                        # First, apply the ground truth edit that is the inverse
-                        intermediate_solution = self._apply_single_edit(gt_code, closest_inverse_gt_line,
-                                                                        gt_edit_to_apply)
-                        # Then, apply the predicted edit to that result
-                        alternative_solution = self._apply_single_edit(intermediate_solution, pred_line, pred_edit)
-
-                        deep_test.append({
-                            "task_id": f"{task_id}_{pred_line}",
-                            "solution": alternative_solution
-                        })
-                        del gt_diff_copy[closest_inverse_gt_line]
-
+            unmatched_gt[task_id] = expand_blocks_to_diff(remain_gt_blocks)
             total_pred_corrects[task_id] = pred_corrects
 
+        # Build and run verification for semantically complex cases
         if len(deep_test) > 0:
-            # 2. Build and run verification for semantically complex cases
-            verify_file = build_verify(self.dataset,
-                                       self.output_dir + f"/{self.dataset}/{self.model_name}_deep_test_verify", deep_test,
-                                       sol_field="solution")
+            verify_file = build_verify_unit_test(self.dataset,
+                                                 self.output_dir + f"/{self.dataset}/{self.model_name}_deep_test_verify",
+                                                 deep_test,
+                                                 sol_field="solution")
             _, temp_gt = save_formatted_gt(self.dataset,
-                                           self.output_dir + f"/{self.dataset}/{self.model_name}_deep_test_gt", deep_test)
-            fail_ids, correct_ids = verify(self.dataset, verify_file, gt_file=temp_gt)
+                                           self.output_dir + f"/{self.dataset}/{self.model_name}_deep_test_gt",
+                                           deep_test)
+            fail_ids, correct_ids = verify_unit_test(self.dataset, verify_file, gt_file=temp_gt, timeout=7200)
 
-            # 3. Update correctness based on verification results
+            # Update correctness based on verification results
             for correct_id in correct_ids:
                 try:
-                    task_id, line = correct_id.rsplit('_', 1)
-                    if task_id in total_pred_corrects:
-                        total_pred_corrects[task_id].add(line)
+                    task_id = correct_id.rsplit('_', 1)[0]
+                    matched_blocks[task_id][correct_id]["success"] = True
+                    pred_block = copy.deepcopy(matched_blocks[task_id][correct_id]["pred_block"])
+                    pred_block["gt_match_count"] = len(matched_blocks[task_id][correct_id]["gt_blocks"])
+                    total_pred_corrects[task_id].append(pred_block)
                 except ValueError:
                     print(f"Warning: Could not parse task_id and line from '{correct_id}'")
+            for fail_id in fail_ids:
+                try:
+                    task_id = fail_id.rsplit('_', 1)[0]
+                    matched_blocks[task_id][fail_id]["success"] = False
+                except ValueError:
+                    print(f"Warning: Could not parse task_id and line from '{fail_id}'")
 
-        # 4. Calculate Precision, Recall, and F1
+        # Calculate Precision, Recall, and F1
         total_precision, total_recall, total_f1 = 0, 0, 0
 
-        for idx, (gt_diff, pred_diff) in enumerate(zip(self.gt_diff, self.pred_diff)):
-            task_id = self.ids[idx]
+        for code_id, (gt_diff, pred_diff) in enumerate(zip(self.gt_diff, self.pred_diff)):
+            task_id = self.ids[code_id]
 
-            # Handle case where both prediction and ground truth are empty (perfect match)
+            # Handle case where both prediction and ground truth are empty
             if not pred_diff and not gt_diff:
                 precision, recall, f1 = 1.0, 1.0, 1.0
             else:
-                true_positives = len(total_pred_corrects.get(task_id, set()))
-                predicted_positives = len(pred_diff)
-                actual_positives = len(gt_diff)
+                actual_pos = len(gt_diff)
+                # compute tolerance on multiline edits for a single-bug
+                tolerance = sum(
+                    [max(b["gt_match_count"] * (self.precision_tol - 1), len(b["diff"]) - b["gt_match_count"])
+                     for b in total_pred_corrects[task_id]]
+                )
+                predicted_pos = len(pred_diff) - tolerance
+                true_pos = sum([b["gt_match_count"] for b in total_pred_corrects[task_id]])
 
-                precision = true_positives / predicted_positives if predicted_positives > 0 else 0.0
-                recall = true_positives / actual_positives if actual_positives > 0 else 0.0
+                precision = true_pos / predicted_pos if predicted_pos > 0 else 0.0
+                recall = true_pos / actual_pos if actual_pos > 0 else 0.0
 
                 if precision + recall > 0:
                     f1 = 2 * (precision * recall) / (precision + recall)
@@ -221,7 +261,15 @@ class Evaluator:
             total_recall += recall
             total_f1 += f1
 
-            self.scores["Symbolic debugging scores"][task_id] = (precision, recall, f1)
+            self.scores[metric_name][task_id] = {
+                "precision": precision,
+                "recall": recall,
+                "f1": f1,
+                "pred_corrects": total_pred_corrects[task_id],
+                "matched_blocks": matched_blocks[task_id],
+                "unmatched_pred": unmatched_pred[task_id],
+                "unmatched_gt": unmatched_gt[task_id]
+            }
 
         return "Precision", total_precision / self.count, "Recall", total_recall / self.count, "F1", total_f1 / self.count
 
@@ -242,15 +290,18 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--dataset_name", type=str, default="bigcodebench")
     parser.add_argument("--input_file", type=str, default="gpt-4o_on_buggy_code_0923-0106.json_correct.json")
-    parser.add_argument("--output_dir", type=str, default="eval_measure")
+    parser.add_argument("--output_dir", type=str, default="eval_measure_test")
     parser.add_argument("--model_name", type=str, default="gpt-4o")
+    parser.add_argument("--stride", type=int, default=2, help="Minimum stride between bug diffs")
+    parser.add_argument("--precision_tolerance", type=int, default=3,
+                        help="Maximum number of lines to fix one bug that considered as precise")
     parser.add_argument("--max_iter", type=int, default=2, help="Maximum number of add-bug iterations")
+
     args = parser.parse_args()
     args.model_name = args.model_name.split("/")[-1]
 
     eval_dir = os.path.join(args.output_dir, args.dataset_name)
-    if not os.path.exists(eval_dir):
-        os.makedirs(eval_dir)
+    os.makedirs(eval_dir, exist_ok=True)
 
     results = json.load(open(f"eval/{args.dataset_name}/{args.input_file}"))
     grouped = defaultdict(list)
