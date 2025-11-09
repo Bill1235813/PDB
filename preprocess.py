@@ -127,26 +127,42 @@ def livecodebench_preprocess(raw_data):
         if not isinstance(ex, dict):
             continue
 
-        task_id = str(ex.get("task_id")) if ex.get("task_id") is not None else None
+        # Prefer existing task_id; otherwise derive from question_id
+        task_id = ex.get("task_id")
+        if task_id is None:
+            qid = ex.get("question_id")
+            task_id = str(qid) if qid is not None else None
+
+        # Two possible shapes:
+        # 1) Buggy-entry shape (already has buggy_code for correction flow)
+        # 2) Raw LiveCodeBench sample (has code_list/output_list and question_content)
         buggy_code = ex.get("buggy_code")
-        task_prompt = ex.get("task_prompt") or ""
+        task_prompt = ex.get("task_prompt") or ex.get("question_content") or ""
         diff = ex.get("diff")
         gt_solution = ex.get("gt_solution")
+        if gt_solution is None:
+            # Fall back to provided reference solution in dataset
+            out_list = ex.get("output_list") or ex.get("code_list")
+            if isinstance(out_list, list) and len(out_list) > 0 and isinstance(out_list[0], str):
+                gt_solution = out_list[0]
+
         bug_count = ex.get("bug_count")
         test = ex.get("test")
 
-        if not task_id or not buggy_code:
+        # Construct processed item only if we have a task_id and at least one of buggy_code or gt_solution
+        if not task_id or (buggy_code is None and gt_solution is None):
             continue
 
         processed_item = {
-            "task_id": task_id,
-            "buggy_code": buggy_code,
+            "task_id": str(task_id),
             "task_prompt": task_prompt,
         }
+        if buggy_code is not None:
+            processed_item["buggy_code"] = buggy_code
+        if gt_solution is not None:
+            processed_item["gt_solution"] = gt_solution
         if isinstance(diff, dict):
             processed_item["diff"] = diff
-        if isinstance(gt_solution, str):
-            processed_item["gt_solution"] = gt_solution
         if isinstance(bug_count, int):
             processed_item["bug_count"] = bug_count
         if test is not None:

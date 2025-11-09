@@ -1,6 +1,7 @@
 import json
 import os
 import copy
+
 from utils import save_formatted_gt, build_verify_unit_test, verify_unit_test, file_diff, parse_diff_to_blocks, \
     verify_block_single_diff, expand_blocks_to_diff, rstrip_lines, apply_diff
 from collections import defaultdict
@@ -14,10 +15,11 @@ class Evaluator:
         self.model_name = args.model_name
         self.stride = args.stride
         self.precision_tol = args.precision_tolerance
+        assert self.precision_tol >= 1, "precision tolerance should be at least 1."
         self.results = results
-        self.ids = [s["task_id"] for s in self.results]
 
         self.gt, self.buggy_code, self.pred, self.gt_diff, self.pred_diff = [], [], [], [], []
+        final_results = []
         for s in self.results:
             if "gt_diff" in s:
                 gt_diff = s["gt_diff"]
@@ -26,9 +28,10 @@ class Evaluator:
             ver_gt_diff, err_str = verify_block_single_diff(gt_diff, block_count=s["bug_count"], stride=self.stride)
             if ver_gt_diff:
                 self.gt_diff.append(gt_diff)
+                final_results.append(s)
             else:
                 continue
-                raise ValueError(err_str)
+                # raise ValueError(err_str)
 
             if "gt_solution" in s:
                 self.gt.append(rstrip_lines(s["gt_solution"]))
@@ -49,10 +52,12 @@ class Evaluator:
                 _, _, pred_diff = file_diff(s["buggy_code"], s["debug_results"]["solution"])
                 self.pred_diff.append(pred_diff)
 
+        self.results = final_results
+        self.ids = [s["task_id"] for s in self.results]
         self.count = len(self.ids)
         self.metrics = {
+            "Unit score": self.unit_score,
             "Symbolic block scores": self.symbolic_block_score,
-            "Unit score": self.unit_score
             # "CodeBLEU": self.code_bleu
         }
 
@@ -68,6 +73,7 @@ class Evaluator:
         return self.scores
 
     def unit_score(self, metric_name):
+        print("Compute unit test score:")
         verify_file = build_verify_unit_test(self.dataset,
                                              self.output_dir + f"/{self.dataset}/{self.model_name}_unit_test_verify",
                                              [{"task_id": idx, "solution": pred} for idx, pred in
@@ -75,7 +81,7 @@ class Evaluator:
         _, formatted_gt = save_formatted_gt(self.dataset,
                                             self.output_dir + f"/{self.dataset}/{self.model_name}_unit_test_gt",
                                             self.results)
-        fail_ids, correct_ids = verify_unit_test(self.dataset, verify_file, gt_file=formatted_gt, timeout=7200)
+        fail_ids, correct_ids = verify_unit_test(self.dataset, verify_file, gt_file=formatted_gt, timeout=1800)
         fail_ids, correct_ids = set(fail_ids), set(correct_ids)
         for idx in self.ids:
             self.scores[metric_name][idx] = 0 if idx in fail_ids else 1
@@ -106,37 +112,41 @@ class Evaluator:
         Evaluates predicted diffs against ground truth diffs, using symbolic
         verification for non-trivial matches.
         """
-        deep_test = []
-        total_pred_corrects = defaultdict(list)
+        print("Compute precision and recall:")
+        equ_test = []
         matched_blocks = defaultdict(dict)
         unmatched_gt = defaultdict(dict)
         unmatched_pred = defaultdict(dict)
+        all_gt_blocks = {task_id: parse_diff_to_blocks(gt_diff) for task_id, gt_diff in zip(self.ids, self.gt_diff)}
+        all_buggy = {task_id: buggy for task_id, buggy in zip(self.ids, self.buggy_code)}
 
         # Find matches and identify candidates for deep testing
-        for code_id, (buggy, gt_diff, pred_diff) in enumerate(zip(self.buggy_code, self.gt_diff, self.pred_diff)):
-            task_id = self.ids[code_id]
-            pred_corrects = []
-            all_gt_blocks = parse_diff_to_blocks(gt_diff)
-            remain_gt_blocks = copy.deepcopy(all_gt_blocks)
+        for task_id, gt_diff, pred_diff in zip(self.ids, self.gt_diff, self.pred_diff):
+            remain_gt_diff = copy.deepcopy(gt_diff)
+            remain_pred_diff = copy.deepcopy(pred_diff)
+            buggy = all_buggy[task_id]
 
             # First pass, only find exact matches
+            count_em = 0
             for line_no_str, v in list(pred_diff.items())[::-1]:
                 line_no_gt = str(int(line_no_str))
-                if line_no_gt in gt_diff and self._is_equal(v, gt_diff[line_no_gt]):
-                    pred_corrects.append({
+                if line_no_gt in remain_gt_diff and self._is_equal(v, remain_gt_diff[line_no_gt]):
+                    matched_blocks[task_id][f"{task_id}_em_{count_em}"] = {
                         "block_start": int(line_no_str),
                         "block_end": int(line_no_str),
                         "diff": {line_no_str: v},
                         "block_id": -1,
-                        "gt_match_count": 1
-                    })
-                    del gt_diff[line_no_gt]
-                    del pred_diff[line_no_str]
-                    remain_gt_blocks = [s for s in remain_gt_blocks if s.get("block_start") != line_no_gt]
+                        "success": True,
+                        "gt_match_count": 1,
+                        "tolerance": 0
+                    }
+                    count_em += 1
+                    del remain_gt_diff[line_no_gt]
+                    del remain_pred_diff[line_no_str]
 
             # Second pass, parse to blocks and find block matches
-            remain_gt_blocks = remain_gt_blocks[::-1]
-            remain_pred_blocks = parse_diff_to_blocks(pred_diff)[::-1]
+            remain_gt_blocks = parse_diff_to_blocks(remain_gt_diff)[::-1][::-1]
+            remain_pred_blocks = parse_diff_to_blocks(remain_pred_diff)[::-1]
             buggy_lines = buggy.splitlines()
             for b_no, pred_block in enumerate(remain_pred_blocks):
                 # 2.1 Check if a prediction block wraps a gt block of edits
@@ -168,7 +178,7 @@ class Evaluator:
                              gt_block["block_start"] + idx <= len(buggy_lines)])
                         # check if line sets have at least one match
                         if (self._line_set_match(pre_pred_lines, pre_gt_lines, buggy_lines[0]) and
-                            self._line_set_match(post_pred_lines, post_gt_lines, buggy_lines[-1])):
+                                self._line_set_match(post_pred_lines, post_gt_lines, buggy_lines[-1])):
                             matched_gt_block.append(gt_block)
                             break
                 # 2.3 Check if a prediction block is distant but identical to a gt block
@@ -184,70 +194,117 @@ class Evaluator:
                     matched_gt_block_ids = [b["block_id"] for b in matched_gt_block]
                     start_block, end_block = min(matched_gt_block_ids), max(matched_gt_block_ids)
                     pred_block["block_id"] = start_block
-                    test_block = all_gt_blocks[:start_block] + [pred_block] + all_gt_blocks[end_block + 1:]
+                    test_block = (all_gt_blocks[task_id][:start_block] + [pred_block] +
+                                  all_gt_blocks[task_id][end_block + 1:])
                     test_diff = expand_blocks_to_diff(test_block)
                     test_solution = apply_diff(buggy, test_diff)
-                    deep_test.append({
+                    equ_test.append({
                         "task_id": f"{task_id}_{b_no}",
                         "solution": test_solution
                     })
                     remain_gt_blocks = [b for b in remain_gt_blocks if b not in matched_gt_block]
+                    # On tolerance: For a single-line bug, we consider a correct multi-line edit within
+                    # (tolerance + 1) lines a "precise" edit, with a full precision score.
+                    # This should be redefined for multi-line bugs.
                     matched_blocks[task_id][f"{task_id}_{b_no}"] = {
                         "pred_block": pred_block,
-                        "gt_blocks": matched_gt_block
+                        "gt_blocks": matched_gt_block,
+                        "start_block": start_block,
+                        "end_block": end_block,
+                        "gt_match_count": len(matched_gt_block),
+                        "tolerance": max(min(len(matched_gt_block) * (self.precision_tol - 1),
+                                             len(pred_block["diff"]) - len(matched_gt_block)),
+                                         0)
                     }
                 else:
                     unmatched_pred[task_id] |= expand_blocks_to_diff([pred_block])
 
             unmatched_gt[task_id] = expand_blocks_to_diff(remain_gt_blocks)
-            total_pred_corrects[task_id] = pred_corrects
 
         # Build and run verification for semantically complex cases
-        if len(deep_test) > 0:
+        if len(equ_test) > 0:
+            print("Semantic equivalence check:")
             verify_file = build_verify_unit_test(self.dataset,
-                                                 self.output_dir + f"/{self.dataset}/{self.model_name}_deep_test_verify",
-                                                 deep_test,
+                                                 self.output_dir + f"/{self.dataset}/{self.model_name}_equ_test_verify",
+                                                 equ_test,
                                                  sol_field="solution")
             _, temp_gt = save_formatted_gt(self.dataset,
-                                           self.output_dir + f"/{self.dataset}/{self.model_name}_deep_test_gt",
-                                           deep_test)
-            fail_ids, correct_ids = verify_unit_test(self.dataset, verify_file, gt_file=temp_gt, timeout=7200)
+                                           self.output_dir + f"/{self.dataset}/{self.model_name}_equ_test_gt",
+                                           equ_test)
+            fail_ids, correct_ids = verify_unit_test(self.dataset, verify_file, gt_file=temp_gt, timeout=1800)
 
             # Update correctness based on verification results
+            redun_test = []
             for correct_id in correct_ids:
                 try:
                     task_id = correct_id.rsplit('_', 1)[0]
                     matched_blocks[task_id][correct_id]["success"] = True
-                    pred_block = copy.deepcopy(matched_blocks[task_id][correct_id]["pred_block"])
-                    pred_block["gt_match_count"] = len(matched_blocks[task_id][correct_id]["gt_blocks"])
-                    total_pred_corrects[task_id].append(pred_block)
+                    if correct_id == "BigCodeBench/88_1_0":
+                        pass
+                    if matched_blocks[task_id][correct_id]["tolerance"] > 0:
+                        start_block = matched_blocks[task_id][correct_id]["start_block"]
+                        end_block = matched_blocks[task_id][correct_id]["end_block"]
+                        pred_block = copy.deepcopy(matched_blocks[task_id][correct_id]["pred_block"])
+                        # For a correct block, check if any smaller (1 to tolerance line) edits in this block work
+                        pred_diff = list(pred_block["diff"].items())
+                        for tol in range(matched_blocks[task_id][correct_id]["tolerance"]):
+                            for test_count in range(len(pred_diff) - tol):
+                                pred_block["diff"] = dict(pred_diff[test_count:test_count + tol + 1])
+                                pred_block["block_start"] = min([int(k) for k in pred_block["diff"].keys()])
+                                pred_block["block_end"] = max([int(k) for k in pred_block["diff"].keys()])
+                                test_block = (all_gt_blocks[task_id][:start_block] + [pred_block] +
+                                              all_gt_blocks[task_id][end_block + 1:])
+                                test_diff = expand_blocks_to_diff(test_block)
+                                test_solution = apply_diff(all_buggy[task_id], test_diff)
+                                redun_test.append({
+                                    "task_id": f"{correct_id}_{tol}_{test_count}",
+                                    "solution": test_solution
+                                })
                 except ValueError:
                     print(f"Warning: Could not parse task_id and line from '{correct_id}'")
             for fail_id in fail_ids:
                 try:
                     task_id = fail_id.rsplit('_', 1)[0]
                     matched_blocks[task_id][fail_id]["success"] = False
+                    matched_blocks[task_id][fail_id]["tolerance"] = 0
+                    matched_blocks[task_id][fail_id]["gt_match_count"] = 0
                 except ValueError:
                     print(f"Warning: Could not parse task_id and line from '{fail_id}'")
+
+            if len(redun_test) > 0:
+                print("Deep redundancy check:")
+                verify_file = build_verify_unit_test(self.dataset,
+                                                     self.output_dir + f"/{self.dataset}/{self.model_name}_redun_test_verify",
+                                                     redun_test,
+                                                     sol_field="solution")
+                _, temp_gt = save_formatted_gt(self.dataset,
+                                               self.output_dir + f"/{self.dataset}/{self.model_name}_redun_test_gt",
+                                               redun_test)
+                fail_ids, correct_ids = verify_unit_test(self.dataset, verify_file, gt_file=temp_gt, timeout=1800)
+                min_tol_by_prefix = {}
+                for correct_id in correct_ids:
+                    prefix, tol_str, test_count = correct_id.rsplit('_', 2)
+                    tol = int(tol_str)
+                    if prefix not in min_tol_by_prefix or tol < min_tol_by_prefix[prefix][0]:
+                        min_tol_by_prefix[prefix] = (tol, test_count)
+                for prefix in min_tol_by_prefix:
+                    task_id = prefix.rsplit('_', 1)[0]
+                    matched_blocks[task_id][prefix]["tolerance"] = min_tol_by_prefix[prefix][0]
+                    matched_blocks[task_id][prefix]["effective_starter"] = min_tol_by_prefix[prefix][1]
 
         # Calculate Precision, Recall, and F1
         total_precision, total_recall, total_f1 = 0, 0, 0
 
-        for code_id, (gt_diff, pred_diff) in enumerate(zip(self.gt_diff, self.pred_diff)):
-            task_id = self.ids[code_id]
+        for task_id, gt_diff, pred_diff in zip(self.ids, self.gt_diff, self.pred_diff):
 
             # Handle case where both prediction and ground truth are empty
             if not pred_diff and not gt_diff:
                 precision, recall, f1 = 1.0, 1.0, 1.0
             else:
                 actual_pos = len(gt_diff)
-                # compute tolerance on multiline edits for a single-bug
-                tolerance = sum(
-                    [max(b["gt_match_count"] * (self.precision_tol - 1), len(b["diff"]) - b["gt_match_count"])
-                     for b in total_pred_corrects[task_id]]
-                )
+                tolerance = sum([match["tolerance"] for _, match in matched_blocks[task_id].items()])
                 predicted_pos = len(pred_diff) - tolerance
-                true_pos = sum([b["gt_match_count"] for b in total_pred_corrects[task_id]])
+                true_pos = sum([match["gt_match_count"] for _, match in matched_blocks[task_id].items()])
 
                 precision = true_pos / predicted_pos if predicted_pos > 0 else 0.0
                 recall = true_pos / actual_pos if actual_pos > 0 else 0.0
@@ -265,7 +322,6 @@ class Evaluator:
                 "precision": precision,
                 "recall": recall,
                 "f1": f1,
-                "pred_corrects": total_pred_corrects[task_id],
                 "matched_blocks": matched_blocks[task_id],
                 "unmatched_pred": unmatched_pred[task_id],
                 "unmatched_gt": unmatched_gt[task_id]
@@ -280,9 +336,8 @@ class Evaluator:
 
     def save_results(self):
         if self.results:
-            with open(
-                    self.output_dir + f"/{self.dataset}/{self.model_name}_round_{self.results[0]['round']}_scores.json",
-                    "w") as f:
+            with open(self.output_dir +
+                      f"/{self.dataset}/{self.model_name}_round_{self.results[0]['round']}_scores.json", "w") as f:
                 json.dump(self.scores, f, indent=2)
 
 
@@ -311,9 +366,11 @@ if __name__ == "__main__":
         task_id = item["task_id"]
         grouped_dict[item["round"]][task_id] = item
 
-    assert args.max_iter in grouped.keys()
+    # assert args.max_iter in grouped.keys()
     scores = None
     for i, group in grouped.items():
+        if i > args.max_iter:
+            break
         print("Evaluate round", i)
         if scores:
             for task_id, value in scores["Unit score"].items():

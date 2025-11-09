@@ -5,6 +5,8 @@ import subprocess
 from copy import deepcopy
 from pathlib import Path
 import re
+import time
+import signal
 import textwrap
 
 import numpy as np
@@ -402,7 +404,7 @@ def align_test_to_solution(solution_code, test_code):
         return test_code
 
 
-def verify_unit_test(dataset, verify_file, gt_file=None, timeout=300):
+def verify_unit_test(dataset, verify_file, gt_file=None, timeout_per_task=20, timeout=1800):
     """
     This verify function is to evaluate the solution based on the dataset API
 
@@ -426,6 +428,7 @@ def verify_unit_test(dataset, verify_file, gt_file=None, timeout=300):
             os.environ.pop("BIGCODEBENCH_OVERRIDE_PATH", None)
             selected_ids = ",".join([json.loads(s)["task_id"] for s in open(verify_file).readlines()])
 
+        os.environ["BIGCODEBENCH_TIMEOUT_PER_TASK"] = str(timeout_per_task)
         workdir = Path(verify_file).parent
         base_name = Path(verify_file).with_suffix("").name
         candidates = [
@@ -435,13 +438,11 @@ def verify_unit_test(dataset, verify_file, gt_file=None, timeout=300):
         try:
             candidates[0].unlink()
             print(f"Removed existing file: {candidates[0]}")
-        except FileNotFoundError:
-            pass
-        try:
             candidates[1].unlink()
             print(f"Removed existing file: {candidates[1]}")
         except FileNotFoundError:
-            pass
+            print(f"New verifying files: {candidates[0]} and {candidates[1]}")
+
         try:
             if selected_ids is not None:
                 result = subprocess.run(
@@ -455,8 +456,7 @@ def verify_unit_test(dataset, verify_file, gt_file=None, timeout=300):
                         "--no_gt",
                     ],
                     cwd=workdir,  # run here
-                    capture_output=True,
-                    text=True,
+                    check=True,
                     timeout=timeout,
                 )
             else:
@@ -470,46 +470,34 @@ def verify_unit_test(dataset, verify_file, gt_file=None, timeout=300):
                         "--no_gt",
                     ],
                     cwd=workdir,  # run here
-                    capture_output=True,
-                    text=True,
+                    check=True,
                     timeout=timeout,
                 )
-            print(result.stderr)
         except subprocess.CalledProcessError as e:
             # This block runs if the command fails (returns non-zero exit code)
             print("Command failed with an error.")
             print(f"Return Code: {e.returncode}")
-            print("STDOUT:", e.stdout)
-            print("STDERR:", e.stderr)
         except subprocess.TimeoutExpired as e:
             # This block runs if the command takes too long
             print("Command timed out!")
-            print("STDOUT:", e.stdout)
-            print("STDERR:", e.stderr)
         except TypeError:
             print("Error: A command argument was not a string. Check your variables.")
 
-        for p in candidates:
-            if p.exists():
-                eval_path = p
-                break
-            else:
-                raise FileNotFoundError(f"Cannot locate evaluation results for {base_name}")
+        if candidates[0].exists():
+            with open(candidates[0], "r") as f:
+                data = json.load(f)
 
-        with open(eval_path, "r") as f:
-            data = json.load(f)
+            eval_dict = data.get("eval", {})
 
-        eval_dict = data.get("eval", {})
-
-        fail_ids, correct_ids = [], []
-        for task_id, perfs in eval_dict.items():
-            status = perfs[0].get("status", "fail")
-            (fail_ids if status == "fail" else correct_ids).append(task_id)
-
-        return fail_ids, correct_ids
+            fail_ids, correct_ids = [], []
+            for task_id, perfs in eval_dict.items():
+                status = perfs[0].get("status", "fail")
+                (fail_ids if status == "fail" else correct_ids).append(task_id)
+            return fail_ids, correct_ids
+        else:
+            raise FileNotFoundError(f"Cannot locate evaluation results for {base_name}")
 
     # LiveCodeBench
-
     elif dataset == "livecodebench":
         """Pass/fail with per-variant expansion using sidecar mapping (rich output)."""
         workdir = Path("/home/zhuwangz/miaosenchai/GenerationDataset/LiveCodeBench")
@@ -527,14 +515,8 @@ def verify_unit_test(dataset, verify_file, gt_file=None, timeout=300):
         result = subprocess.run(
             command,
             cwd=workdir,
-            capture_output=True,
-            text=True
+            check=True,
         )
-
-        print("Evaluation script stdout:")
-        print(result.stdout)
-        print("Evaluation script stderr:")
-        print(result.stderr)
 
         if not Path(eval_output_filename).exists():
             raise FileNotFoundError(f"Rich evaluation output file not found at {eval_output_filename}")
