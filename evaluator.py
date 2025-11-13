@@ -32,7 +32,7 @@ class Evaluator:
             else:
                 continue
                 # raise ValueError(err_str)
-
+            # check the format of input file, evaluation is a separated process from debugging
             if "gt_solution" in s:
                 self.gt.append(rstrip_lines(s["gt_solution"]))
             else:
@@ -71,7 +71,7 @@ class Evaluator:
                 print(f"{name}:", metric(name))
             self.save_results()
         return self.scores
-
+    # check the unit-test score by calling utils
     def unit_score(self, metric_name):
         print("Compute unit test score:")
         verify_file = build_verify_unit_test(self.dataset,
@@ -358,7 +358,11 @@ if __name__ == "__main__":
     eval_dir = os.path.join(args.output_dir, args.dataset_name)
     os.makedirs(eval_dir, exist_ok=True)
 
-    results = json.load(open(f"eval/{args.dataset_name}/{args.input_file}"))
+    # Support both absolute paths and filenames under eval/{dataset_name}
+    input_path = args.input_file
+    if not os.path.isabs(input_path):
+        input_path = os.path.join("eval", args.dataset_name, input_path)
+    results = json.load(open(input_path))
     grouped = defaultdict(list)
     grouped_dict = defaultdict(dict)
     for item in results:

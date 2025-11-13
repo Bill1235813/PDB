@@ -41,6 +41,51 @@ FREE_DEBUG_TEMPLATE = (
     "Corrected Code Output (use the format above):\n"
 )
 
+MINIMAL_DEBUG_WITH_TEST_TEMPLATE = (
+    "Analyze and debug the given Python implementation that contains errors \n"
+    "Identify the bugs and fix ONLY the bugs in the code. Do not generate a new solution. You don't need to provide any explanation.\n\n"
+    "You must preserve the original code logic exactly. Please Do NOT:\n"
+    "- Change variable names\n"
+    "- Modify a correct loop structure (e.g., for/while)\n"
+    "- Remove or replace existing variables\n\n"
+    "The input consists of three parts:\n"
+    "PART 1: A problem description outlining the intended functionality.\n"
+    "PART 2: Unit tests for context.\n"
+    "PART 3: A buggy implementation that needs to be fixed.\n"
+    "Your response should include:\n"
+    "- A self-contained, corrected Python implementation;\n"
+    "\n"
+    "---\n"
+    "PART 1: Problem Description\n"
+    "```text\n{task_prompt}\n```\n\n"
+    "PART 2: Unit Tests (context only)\n"
+    "```python\n{unit_tests_code}\n```\n\n"
+    "PART 3: Buggy Code\n"
+    "```python\n{buggy_code}\n```\n\n"
+    "---\n"
+    "Output format (follow *exactly*):\n"
+    "```python\n[Corrected code here]\n```\n"
+    "Corrected Code Output (use the format above):\n"
+)
+
+FREE_DEBUG_WITH_TEST_TEMPLATE = (
+    "Analyze and debug the given Python implementation that contains errors \n"
+    "Your response should include:\n"
+    "- A self-contained, corrected Python implementation;\n"
+    "\n"
+    "---\n"
+    "PART 1: Problem Description\n"
+    "```text\n{task_prompt}\n```\n\n"
+    "PART 2: Unit Tests (context only)\n"
+    "```python\n{unit_tests_code}\n```\n\n"
+    "PART 3: Buggy Code\n"
+    "```python\n{buggy_code}\n```\n\n"
+    "---\n"
+    "Output format (follow *exactly*):\n"
+    "```python\n[Corrected code here]\n```\n"
+    "Corrected Code Output (use the format above):\n"
+)
+
 CODE_BLOCK_REGEX = re.compile(r"```(?:python)?\s*\n(.*?)```", re.DOTALL | re.IGNORECASE)
 SIMPLE_CODE_BLOCK_REGEX = re.compile(r"```(.*?)```", re.DOTALL | re.IGNORECASE)
 DIFF_STR_PATTERN = re.compile(r"^(\d+): (.*) --> (.*)$")

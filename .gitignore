@@ -60,6 +60,7 @@ log/livecodebench/
 *.json
 
 READ.md
+/comm
 show_lcb_dataset.py
 
 

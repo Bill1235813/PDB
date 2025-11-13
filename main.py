@@ -7,7 +7,7 @@ import datetime
 import tqdm
 from evaluator import Evaluator
 from utils import file_diff
-from module import MINIMAL_DEBUG_TEMPLATE, FREE_DEBUG_TEMPLATE, CODE_BLOCK_REGEX
+from module import MINIMAL_DEBUG_TEMPLATE, FREE_DEBUG_TEMPLATE, CODE_BLOCK_REGEX, MINIMAL_DEBUG_WITH_TEST_TEMPLATE, FREE_DEBUG_WITH_TEST_TEMPLATE
 
 
 def bug_correct(data, generator, log_file_prefix, output_file, args):
@@ -15,6 +15,13 @@ def bug_correct(data, generator, log_file_prefix, output_file, args):
     if not data:
         print("No buggy data to correct; skipping correction phase.")
         return [], []
+
+    # Lazy-load and cache external unit tests for Claude agent
+    if args.use_claude_code and args.dataset_name == "bigcodebench":
+        if not hasattr(bug_correct, "_bigcode_tests_map"):
+            from datasets import load_dataset
+            ds = load_dataset("bigcode/bigcodebench", split="v0.1.4")
+            bug_correct._bigcode_tests_map = {row["task_id"]: row["test"] for row in ds}
 
     cache = None
     # dataset_name = args.dataset_name
@@ -55,11 +62,46 @@ def bug_correct(data, generator, log_file_prefix, output_file, args):
             log_entry["debug_results"] = {"model": args.model_name}
             log_entry["round"] = round + 1
 
-            prompt_template = MINIMAL_DEBUG_TEMPLATE if args.debug_mode == "minimal" else FREE_DEBUG_TEMPLATE
-            prompt_text = prompt_template.format(
-                task_prompt=task_prompt,
-                buggy_code=buggy_code
-            )
+            if args.use_claude_code:
+                if args.debug_mode == "minimal":
+                    prompt_template = MINIMAL_DEBUG_WITH_TEST_TEMPLATE
+                else:
+                    prompt_template = FREE_DEBUG_WITH_TEST_TEMPLATE
+
+                # Build unit test context per dataset
+                if args.dataset_name == "bigcodebench":
+                    # Normalize task_id by removing suffix after first underscore in the right part
+                    tid_left, tid_right = str(task_id).split("/", 1)
+                    base_right = tid_right.split("_", 1)[0]
+                    normalized_tid = f"{tid_left}/{base_right}"
+                    unit_tests_code = bug_correct._bigcode_tests_map[normalized_tid]
+                elif args.dataset_name == "livecodebench":
+                    unit_tests_code = "# Unit tests are not available for this dataset in-context.\n# Placeholder."
+                else:
+                    #TODO For other datasets (e.g., KodCodeBench)
+                    prompt_template = MINIMAL_DEBUG_TEMPLATE if args.debug_mode == "minimal" else FREE_DEBUG_TEMPLATE
+                    unit_tests_code = None
+
+                if unit_tests_code is not None:
+                    prompt_text = prompt_template.format(
+                        task_prompt=task_prompt,
+                        unit_tests_code=unit_tests_code,
+                        buggy_code=buggy_code
+                    )
+                    print(prompt_text)
+                else:
+                    print("Didn't find unit-test!!!")
+                    prompt_text = prompt_template.format(
+                        task_prompt=task_prompt,
+                        buggy_code=buggy_code
+                    )
+            else:
+                # Non-Claude modes: keep original templates and behavior
+                prompt_template = MINIMAL_DEBUG_TEMPLATE if args.debug_mode == "minimal" else FREE_DEBUG_TEMPLATE
+                prompt_text = prompt_template.format(
+                    task_prompt=task_prompt,
+                    buggy_code=buggy_code
+                )
 
             try:
                 response = generator(prompt=prompt_text)
@@ -227,7 +269,8 @@ def eval_main(args):
     if args.model_api_file:
         model_api_file = os.path.join("keys", args.model_api_file)
     log_file_prefix = os.path.join(log_dir, args.log_prefix) + "_" + time_to_add + "_"
-    eval_file = args.input_file[0].rsplit(".")[0]
+    # Use only the base filename (without directories or extension) for output naming
+    eval_file = os.path.splitext(os.path.basename(args.input_file[0]))[0]
     if not args.output_prefix:
         output_prefix = args.model_name.split("/")[-1]
     else:
@@ -247,7 +290,16 @@ def eval_main(args):
             buggy_data.extend(d)
 
     # Load the model
-    if args.model_api_file:
+    if args.use_claude_code:
+        # Use Claude Code 
+        from claude_code_wrapper import ClaudeCodeGenerator
+        generator_cor = ClaudeCodeGenerator(
+            temperature=args.temperature,
+            max_tokens=args.max_tokens,
+            timeout=args.claude_timeout
+        )
+        print("Using Claude Code autonomous agent mode")
+    elif args.model_api_file:
         # Use API-based model when API file is provided
         api_key = open(model_api_file, "r").read().strip()
         generator_cor = dspy.LM(args.model_name, api_key=api_key, temperature=args.temperature,
@@ -304,6 +356,12 @@ if __name__ == "__main__":
     parser.add_argument("--max_iter", type=int, default=2, help="Maximum number of add-bug iterations")
     parser.add_argument("--max_tokens", type=int, default=4000, help="Maximum number of tokens")
     parser.add_argument("--temperature", type=float, default=0.7, help="Temperature for the generator")
+
+    # Claude Code specific arguments
+    parser.add_argument("--use_claude_code", action="store_true",
+                        help="Use Claude Code agent")
+    parser.add_argument("--claude_timeout", type=int, default=300,
+                        help="Timeout for Claude Code execution (seconds)")
 
     args = parser.parse_args()
     eval_main(args)
