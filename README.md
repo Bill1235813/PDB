@@ -1,21 +1,25 @@
 # PDB: Precise Debugging Benchmarking
 
+📄 Paper *(coming soon)* &nbsp;·&nbsp;
+🌐 [Project page](https://precise-debugging-benchmark.github.io/) &nbsp;·&nbsp;
+🤗 [Datasets](https://huggingface.co/Precise-Debugging-Benchmarking) &nbsp;·&nbsp;
+🏆 [Leaderboard](https://precise-debugging-benchmark.github.io/leaderboard.html)
+
 **PDB** is an automatic pipeline that turns any coding dataset into a *debugging* benchmark with fine-grained metrics. Beyond binary unit-test scores, PDB evaluates a debugger with **edit-level precision** (did the model touch only the lines it had to?) and **bug-level recall** (did it fix every fault?). This rewards targeted fixes and penalizes the regeneration behavior frontier LLMs often fall back on.
 
 - Released datasets: [`PDB-Single`](https://huggingface.co/datasets/Precise-Debugging-Benchmarking/PDB-Single) · [`PDB-Single-Hard`](https://huggingface.co/datasets/Precise-Debugging-Benchmarking/PDB-Single-Hard) · [`PDB-Multi`](https://huggingface.co/datasets/Precise-Debugging-Benchmarking/PDB-Multi)
-- Paper: coming soon (pre-arxiv).
 
-> TL;DR — Frontier models like GPT-5.1-Codex and DeepSeek-V3.2-Thinking top unit-test leaderboards (>78%) but score below 45% on precision: they pass tests by rewriting, not repairing. PDB makes that gap measurable.
+> TL;DR — Frontier models like GPT-5.1-Codex and DeepSeek-V3.2-Thinking top unit-test leaderboards (>76%) but score at or below 45% on precision: they pass tests by rewriting, not repairing. PDB makes that gap measurable.
 
 ---
 
-## 1. Installation
+## 📦 Installation
 
 We use [`uv`](https://docs.astral.sh/uv/) for reproducible environments.
 
 ```bash
-git clone https://github.com/Bill1235813/Precise-Debugging-Benchmarking
-cd Precise-Debugging-Benchmarking
+git clone https://github.com/Bill1235813/PDB
+cd PDB
 uv sync                        # creates .venv, installs locked deps
 source .venv/bin/activate      # optional; scripts already point at .venv/bin/python
 ```
@@ -33,7 +37,7 @@ Drop one key file per provider into [keys/](keys/) (each file is a single line w
 
 ---
 
-## 2. Evaluate a model on PDB (single / single-hard / multi)
+## 🧪 Evaluate a model on PDB (single / single-hard / multi)
 
 Bug-correct + score one model across both BigCodeBench and LiveCodeBench:
 
@@ -56,7 +60,7 @@ To loop a fixed list of reference models instead of one, run [scripts/run_debug_
 
 ---
 
-## 3. Score an existing debug-results file
+## 📐 Score an existing debug-results file
 
 If you already have patches saved (downloaded from Hugging Face, produced by an external agent, etc.), score them without re-running the model:
 
@@ -73,7 +77,7 @@ The input format matches what `bug_correct.py` writes (a list of entries with `t
 
 ---
 
-## 4. Generate your own PDB test set
+## 🐛 Generate your own PDB test set
 
 Every file under `dataset/<bench>/data/full_data.json` goes through the same pipeline:
 
@@ -122,7 +126,7 @@ Implement a `DatasetHandler` subclass under `dataset/<your-dataset>/` and regist
 
 ---
 
-## 5. Iterative or agentic debugging
+## 🔁 Iterative or agentic debugging
 
 All three flavors below start from an already-scored round-1 single-pass run (produced by `scripts/run_debug_eval.sh` or `simple_debug_eval.sh`) and reload it with `--reload_first_round`, so only rounds 2+ consume fresh API credits.
 
@@ -182,7 +186,7 @@ Each round of every flavor writes `<model>_on_<eval_set>_round_<k>.json` + its s
 
 ---
 
-## 6. Reproduce experiments
+## 🔬 Reproduce experiments
 
 ### Regenerate `<bench>_pdb_single.json`
 
@@ -222,19 +226,20 @@ Final reproduction targets (union over BCB + LCB):
 
 | subset | n | models evaluated | top precision model | top unit-score model |
 |---|---|---|---|---|
-| PDB-Single | 7,591 | 9 | claude-sonnet-4.5 | deepseek-reasoner |
-| PDB-Single-Hard | 5,751 | 9 | claude-sonnet-4.5 | deepseek-reasoner |
-| PDB-Multi | 256 | 3 | claude-sonnet-4.5 | gpt-5.1-codex |
+| PDB-Single | 7,591 | 9 | Claude-Sonnet-4.5 | 	DeepSeek-V3.2-Thinking |
+| PDB-Single-Hard | 5,751 | 9 | Claude-Sonnet-4.5 | 	DeepSeek-V3.2-Thinking |
+| PDB-Multi | 256 | 9 | Claude-Sonnet-4.5 | 	DeepSeek-V3.2-Thinking |
 
 ---
 
 ## Citation
 
 ```
-@inproceedings{zhu2025pdb,
-  title={Precise Debugging Benchmark: Is Your Model Debugging or Regenerating?},
-  author={Zhu, Wang Bill and Chai, Miaosen and Wang, Shangshang and Liu, Yejia and Bian, Song and Dong, Honghua and Neiswanger, Willie and Jia, Robin},
-  year={2025},
-  url={https://openreview.net/forum?id=BMUlYGOJuX#discussion}
+@inproceedings{zhu2026pdb,
+  title     = {Precise Debugging Benchmark: Is Your Model Debugging or Regenerating?},
+  author    = {Zhu, Wang Bill and Chai, Miaosen and Wang, Shangshang and Liu, Yejia and
+               Bian, Song and Dong, Honghua and Neiswanger, Willie and Jia, Robin},
+  booktitle = {Findings of the Association for Computational Linguistics: ACL 2026},
+  year      = {2026},
 }
 ```
