@@ -1,6 +1,6 @@
 # PDB: Precise Debugging Benchmarking
 
-📄 Paper *(coming soon)* &nbsp;·&nbsp;
+📄 [Paper](https://arxiv.org/abs/2604.17338) &nbsp;·&nbsp;
 🌐 [Project page](https://precise-debugging-benchmark.github.io/) &nbsp;·&nbsp;
 🤗 [Datasets](https://huggingface.co/Precise-Debugging-Benchmarking) &nbsp;·&nbsp;
 🏆 [Leaderboard](https://precise-debugging-benchmark.github.io/leaderboard.html)
