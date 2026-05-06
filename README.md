@@ -235,11 +235,10 @@ Final reproduction targets (union over BCB + LCB):
 ## Citation
 
 ```
-@inproceedings{zhu2026pdb,
-  title     = {Precise Debugging Benchmark: Is Your Model Debugging or Regenerating?},
-  author    = {Zhu, Wang Bill and Chai, Miaosen and Wang, Shangshang and Liu, Yejia and
-               Bian, Song and Dong, Honghua and Neiswanger, Willie and Jia, Robin},
-  booktitle = {Findings of the Association for Computational Linguistics: ACL 2026},
-  year      = {2026},
+@article{zhu2026pdb,
+  title={Precise Debugging Benchmark: Is Your Model Debugging or Regenerating?},
+  author={Zhu, Wang Bill and Chai, Miaosen and Wang, Shangshang and Liu, Yejia and Bian, Song and Dong, Honghua and Neiswanger, Willie and Jia, Robin},
+  journal={arXiv preprint arXiv:2604.17338},
+  year={2026}
 }
 ```
