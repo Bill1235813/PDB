@@ -60,7 +60,7 @@ Example output (Evaluator per-dataset lines + driver union):
 ```
 [summary] gpt-5.1-codex on bigcodebench_pdb_single_hard round 1: unit=0.733 prec=0.548 rec=0.777 f1=0.602 (n=2510)
 [summary] gpt-5.1-codex on livecodebench_pdb_single_hard round 1: unit=0.914 prec=0.465 rec=0.789 f1=0.540 (n=3224)
-  union  unit=0.828 prec=0.500 rec=0.783 f1=0.566 (n=5734)
+  union  unit=0.828 prec=0.500 rec=0.783 f1=0.566
 ```
 
 To loop a fixed list of reference models instead of one, run [scripts/run_debug_eval.sh](scripts/run_debug_eval.sh) with the same subset arg. Model list, token budgets, and run-wide knobs (debug mode, rounds, temperature) are configurable at the top of each driver — see [scripts/README.md](scripts/README.md) for details.
