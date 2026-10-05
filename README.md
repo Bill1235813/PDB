@@ -46,8 +46,6 @@ This rewards targeted fixes and penalizes the regeneration behavior frontier LLM
 - Released datasets: [`PDB-Single`](https://huggingface.co/datasets/Precise-Debugging-Benchmarking/PDB-Single) · [`PDB-Single-Full`](https://huggingface.co/datasets/Precise-Debugging-Benchmarking/PDB-Single-Full) · [`PDB-Wild`](https://huggingface.co/datasets/Precise-Debugging-Benchmarking/PDB-Wild) (BigCodeBench/LiveCodeBench part: [`PDB-Multi`](https://huggingface.co/datasets/Precise-Debugging-Benchmarking/PDB-Multi)) · model outputs and scores: [`PDB-Results`](https://huggingface.co/datasets/Precise-Debugging-Benchmarking/PDB-Results)
 - Repository-level bugs (PDB-Wild): 228 multi-line bugs in 6 SWE-smith repositories, [`results/swesmith/bug_data/swesmith_pdb_multi.json`](results/swesmith/bug_data/swesmith_pdb_multi.json) — see [dataset/swesmith/README.md](dataset/swesmith/README.md)
 
----
-
 ## 📦 Installation
 
 We use [`uv`](https://docs.astral.sh/uv/) for reproducible environments.
@@ -76,8 +74,6 @@ uv sync --extra swesmith
 
 Drop one key file per provider into [keys/](keys/) (each file is a single line with the raw key). Mapping, local-model setup, and `--model_api_file` override instructions are in [keys/README.md](keys/README.md).
 
----
-
 ## 🧪 Evaluate a model on PDB (single / single-hard / multi)
 
 Bug-correct + score one model across both BigCodeBench and LiveCodeBench:
@@ -99,8 +95,6 @@ Example output (Evaluator per-dataset lines + driver union):
 
 To loop a fixed list of reference models instead of one, run [scripts/run_debug_eval.sh](scripts/run_debug_eval.sh) with the same subset arg. Model list, token budgets, and run-wide knobs (debug mode, rounds, temperature) are configurable at the top of each driver — see [scripts/README.md](scripts/README.md) for details.
 
----
-
 ## 📐 Score an existing debug-results file
 
 If you already have patches saved (downloaded from Hugging Face, produced by an external agent, etc.), score them without re-running the model:
@@ -115,8 +109,6 @@ python src/evaluator.py \
 ```
 
 The input format matches what `bug_correct.py` writes (a list of entries with `task_id`, `buggy_code`, `gt_solution`, `debug_results.solution`, `gt_diff`, …). At the end, the same `[summary]` line as above is printed. Output-file paths and schema are documented in [scripts/README.md](scripts/README.md#output-files).
-
----
 
 ## 🐛 Generate your own PDB test set
 
@@ -182,8 +174,6 @@ Implement a `DatasetHandler` subclass under `dataset/<your-dataset>/` and regist
 | `--n_workers_llm` / `--n_workers_validation` | `1` / `4` | parallel LLM calls / Docker validation workers |
 | `--coverage_gate`, `--augment_tests`, `--property_based` | off | optional test-adequacy gate (above) |
 
----
-
 ## 🔁 Iterative or agentic debugging
 
 All three flavors below start from an already-scored round-1 single-pass run (produced by `scripts/run_debug_eval.sh` or `simple_debug_eval.sh`) and reload it with `--reload_first_round`, so only rounds 2+ consume fresh API credits.
@@ -242,8 +232,6 @@ python src/bug_correct.py \
 
 Each round of every flavor writes `<model>_on_<eval_set>_round_<k>.json` + its scores file. Prompt templates (`minimal` vs `free`, `*_with_feedback`, `*_unit`) are documented in [scripts/README.md](scripts/README.md#prompt-variants).
 
----
-
 ## 🔬 Reproduce experiments
 
 ### Regenerate `<bench>_pdb_single.json`
@@ -288,15 +276,11 @@ Final reproduction targets (union over BCB + LCB):
 | PDB-Single | 5,751 | 9 | Claude-Sonnet-4.5 | DeepSeek-V3.2-Thinking |
 | PDB-Multi | 256 | 9 | Claude-Sonnet-4.5 | DeepSeek-V3.2-Thinking |
 
----
-
 ## ✅ Tests
 
 ```bash
 uv run --extra test python -m pytest tests     # no API calls, no Docker
 ```
-
----
 
 ## 📝 Citation
 
