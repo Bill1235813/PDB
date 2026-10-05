@@ -250,7 +250,7 @@ Final reproduction targets (union over BCB + LCB):
 
 | subset | n | models evaluated | top precision model | top unit-score model |
 |---|---|---|---|---|
-| PDB-Single-Full | 7,591 | 9 | Claude-Sonnet-4.5 | 	DeepSeek-V3.2-Thinking |
+| PDB-Single-Full | 7,589 | 9 | Claude-Sonnet-4.5 | 	DeepSeek-V3.2-Thinking |
 | PDB-Single | 5,751 | 9 | Claude-Sonnet-4.5 | 	DeepSeek-V3.2-Thinking |
 | PDB-Multi | 256 | 9 | Claude-Sonnet-4.5 | 	DeepSeek-V3.2-Thinking |
 
