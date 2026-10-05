@@ -1,5 +1,7 @@
 # PDB: Precise Debugging Benchmarking
 
+⭐ **Accepted by NeurIPS 2026 Evaluations and Datasets**
+
 📄 [Paper](https://arxiv.org/abs/2604.17338) &nbsp;·&nbsp;
 🌐 [Project page](https://precise-debugging-benchmark.github.io/) &nbsp;·&nbsp;
 🤗 [Datasets](https://huggingface.co/Precise-Debugging-Benchmarking) &nbsp;·&nbsp;
