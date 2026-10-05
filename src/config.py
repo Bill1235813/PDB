@@ -22,5 +22,6 @@ DEFAULT_TOLERANCE_MULTILINE = 1
 DEFAULT_TOLERANCE_SINGLELINE = 2
 
 # Upper bound used in the evaluator when validating GT diffs: we accept GT
-# blocks up to this size without rejection. Should be >= MAX_MULTILINES.
-EVAL_MAX_LINES_PER_BLOCK = 10
+# blocks up to this size without rejection. Should be >= the largest
+# --max_lines_per_block used for generation (30 for SWE-smith).
+EVAL_MAX_LINES_PER_BLOCK = 30

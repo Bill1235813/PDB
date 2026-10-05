@@ -161,18 +161,20 @@ You should output two things:
     buggy_solution = dspy.OutputField(desc="Code with only ONE bug introduced, no comments on the modified line")
 
 
-class IntroduceMultilineBug(dspy.Signature):
-    task_prompt = dspy.InputField(desc="The programming task description for context")
-    correct_solution = dspy.InputField(desc="A correct Python code solution")
-    bug_type = dspy.InputField(desc="The type of bug to add")
-    action_on_lines = dspy.InputField(desc="Contiguous line ranges to choose from and their code")
-    subtype = dspy.OutputField(desc="Subtype of the introduced bug")
-    buggy_solution = dspy.OutputField(
-        desc=f"Full code with exactly ONE contiguous {MIN_MULTILINES}-{MAX_MULTILINES} line bug block")
+def make_multiline_bug_signature(min_lines: int, max_lines: int):
+    """Factory: create an IntroduceMultilineBug Signature with dynamic min/max line counts."""
 
+    class _Sig(dspy.Signature):
+        task_prompt = dspy.InputField(desc="The programming task description for context")
+        correct_solution = dspy.InputField(desc="A correct Python code solution")
+        bug_type = dspy.InputField(desc="The type of bug to add")
+        action_on_lines = dspy.InputField(desc="Contiguous line ranges to choose from and their code")
+        subtype = dspy.OutputField(desc="Subtype of the introduced bug")
+        buggy_solution = dspy.OutputField(
+            desc=f"Full code with exactly ONE contiguous {min_lines}-{max_lines} line bug block")
 
-IntroduceMultilineBug.__doc__ = f"""Your task is to introduce ONE realistic, human-authored bug that spans a contiguous
-BLOCK of {MIN_MULTILINES} to {MAX_MULTILINES} CONSECUTIVE lines in a Python solution.
+    _Sig.__doc__ = f"""Your task is to introduce ONE realistic, human-authored bug that spans a contiguous
+BLOCK of {min_lines} to {max_lines} CONSECUTIVE lines in a Python solution.
 
 Think like a sleep-deprived engineer reviewing their own code — the bug should be a plausible
 slip a real developer might commit, not an obviously synthetic corruption.
@@ -182,7 +184,7 @@ PART 1: A task description.
 PART 2: A correct solution.
 PART 3: A set of contiguous line RANGES you may choose from (e.g., "Lines 10-13").
 
-Pick exactly ONE of the given ranges. Within that range, change {MIN_MULTILINES}-{MAX_MULTILINES} consecutive lines.
+Pick exactly ONE of the given ranges. Within that range, change {min_lines}-{max_lines} consecutive lines.
 
 GOOD multiline bug patterns to draw inspiration from:
 - Flip a loop/branch condition AND mis-adjust a dependent expression in the next line(s)
@@ -199,7 +201,7 @@ an Assignment correction on the next line — that is exactly what real human bu
 CRITICAL RULES:
 - Only change lines within ONE of the given contiguous ranges; keep every other line EXACTLY the same.
 - All changed lines must be CONSECUTIVE (no gaps between modified lines).
-- Number of changed lines: {MIN_MULTILINES} to {MAX_MULTILINES}.
+- Number of changed lines: {min_lines} to {max_lines}.
 - Every changed line must change RUNTIME BEHAVIOR. Comment-only edits, whitespace edits, or
   consistent variable renames do NOT count and will be rejected.
 - Each changed line must be ESSENTIAL. If one edit could be reverted to the GT while the rest
@@ -236,7 +238,14 @@ BAD BUG EXAMPLES — never produce output that matches these patterns:
 
 Output:
 - The subtype label for the introduced bug (if mixed, pick the dominant one or "Others").
-- The full buggy code with exactly one contiguous block of {MIN_MULTILINES}-{MAX_MULTILINES} lines changed."""
+- The full buggy code with exactly one contiguous block of {min_lines}-{max_lines} lines changed."""
+
+    return _Sig
+
+
+# Default signature using config constants (used when max_lines_per_block not specified)
+IntroduceMultilineBug = make_multiline_bug_signature(MIN_MULTILINES, MAX_MULTILINES)
+
 
 
 class MinimalDebug(dspy.Signature):
@@ -371,6 +380,29 @@ Your response should include:
     corrected_solution = dspy.OutputField(desc="The corrected solution")
 
 
+class GenerateUnitTests(dspy.Signature):
+    """Write additional pytest tests for a Python module from a real repository.
+
+The tests must exercise the lines marked with ">>" in the numbered source (they are not
+executed by the existing test suite). The tests are run against the CORRECT code shown here
+and are discarded if they fail, so assert only behavior that the shown code actually has.
+
+RULES:
+- Output one self-contained pytest file in a ```python code block.
+- Import the module under test by its import name; do not copy its code into the test.
+- Use only the standard library, pytest, the module's package and its existing dependencies
+  (plus `hypothesis` if property-based tests are requested).
+- Tests must be deterministic: no network, no sleeping, no reliance on wall-clock time;
+  write files only under pytest's `tmp_path`.
+- Prefer several small focused test functions over one large test."""
+    module_path = dspy.InputField(desc="Path of the module inside the repository")
+    import_name = dspy.InputField(desc="Dotted import name of the module")
+    source_code = dspy.InputField(desc="Numbered source; '>>' marks lines the suite never executes")
+    uncovered_lines = dspy.InputField(desc="Line numbers that new tests should execute")
+    style = dspy.InputField(desc="Test style requirements")
+    test_code = dspy.OutputField(desc="A complete pytest file in a ```python code block")
+
+
 class Rewriter(dspy.Module):
     def __init__(self):
         super().__init__()
@@ -448,9 +480,11 @@ class BugInjector(dspy.Module):
 
 
 class MultilineBugInjector(dspy.Module):
-    def __init__(self):
+    def __init__(self, max_lines_per_block: int = MAX_MULTILINES):
         super().__init__()
-        self.introduce_bug = dspy.Predict(IntroduceMultilineBug)
+        sig = make_multiline_bug_signature(MIN_MULTILINES, max_lines_per_block)
+        self.introduce_bug = dspy.Predict(sig)
+        self.max_lines = max_lines_per_block
 
     def forward(self, task_prompt, gt_solution, bug_type, action_on_lines):
         """
@@ -473,7 +507,7 @@ class MultilineBugInjector(dspy.Module):
                 bug_type_str += f"Other {i + 1}. {sub}: {expl}\n"
 
         bug_type_str += (f"\nBe creative and think like a real human who made a mistake. "
-                         f"The bug must span {MIN_MULTILINES}-{MAX_MULTILINES} contiguous lines where EVERY line is essential "
+                         f"The bug must span {MIN_MULTILINES}-{self.max_lines} contiguous lines where EVERY line is essential "
                          f"(reverting any single line to the GT must still leave the tests failing). "
                          f"If the subtype does not match any example, output the subtype as \"Others\".")
 

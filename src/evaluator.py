@@ -21,7 +21,7 @@ import copy
 
 from dataset import get_handler
 from utils import file_diff, parse_diff_to_blocks, verify_block_single_diff, verify_block_diff, expand_blocks_to_diff, rstrip_lines, \
-    apply_diff
+    apply_diff, set_block_merge_mode
 from config import DEFAULT_TOLERANCE_MULTILINE, DEFAULT_TOLERANCE_SINGLELINE, EVAL_MAX_LINES_PER_BLOCK
 from collections import defaultdict
 from argparse import ArgumentParser
@@ -31,6 +31,7 @@ class Evaluator:
     def __init__(self, args, results=None):
         self.dataset = args.dataset_name
         self.handler = get_handler(args.dataset_name)
+        set_block_merge_mode(self.handler.merge_adjacent_add_blocks)
         self.output_dir = os.path.join(args.eval_result_dir, args.dataset_name, "eval_results")
         self.log_dir = os.path.join(self.output_dir, "log")
         os.makedirs(self.output_dir, exist_ok=True)
@@ -76,12 +77,18 @@ class Evaluator:
                 gt_diff = s["gt_diff"]
             else:
                 _, _, gt_diff = file_diff(s["buggy_code"], s["gt_solution"], cleaned=True)
-            # Validate: correct block count + per-block line cap + stride gap.
-            # NOTE: [design thought] Stride is genuinely re-checked here so the
-            # evaluator is self-contained. Failures become a skip-with-warning.
+            # Validate: correct block count + per-block line cap.
+            # NOTE: [design thought] Failures become a skip-with-warning. The stride
+            # gap is not re-checked: span-mode multi-line bugs (code moves) may have
+            # blocks closer than the composition stride, which generation enforces.
             ver_gt_diff, err_str = verify_block_diff(gt_diff, block_count=s["bug_count"],
-                                                     stride=self.stride,
+                                                     stride=0,
                                                      max_lines_per_block=EVAL_MAX_LINES_PER_BLOCK)
+            # NOTE: [edge case callout] results are keyed by task_id; a duplicate id
+            # would silently replace an earlier example and shrink the eval set.
+            if s["task_id"] in final_results:
+                raise ValueError(f"Duplicate task_id {s['task_id']!r} in evaluation input; "
+                                 f"task ids must be unique.")
             if ver_gt_diff:
                 final_results[s["task_id"]] = s
                 self.gt_diff.append(gt_diff)
@@ -134,7 +141,7 @@ class Evaluator:
             return self.scores
 
     def success_unit(self, task_id):
-        return self.scores["Unit score"][task_id] == 1
+        return self.scores["Unit score"].get(task_id, 0) == 1
 
     def unit_score(self, metric_name):
         """
@@ -156,8 +163,13 @@ class Evaluator:
             self.eval_results)
         fail_ids, correct_ids, fail_feedback = self.handler.verify_unit_test(
             verify_file, gt_file=formatted_gt, timeout=1800)
+        # NOTE: [edge case callout] pair ids with feedback while both are still
+        # ordered lists; zipping after set() would attach messages to wrong tasks.
+        if isinstance(fail_feedback, dict):
+            self.error_msg = {idx: fail_feedback.get(idx, "") for idx in fail_ids}
+        else:
+            self.error_msg = {ids: feedback for ids, feedback in zip(fail_ids, fail_feedback)}
         fail_ids, correct_ids = set(fail_ids), set(correct_ids)
-        self.error_msg = {ids: feedback for ids, feedback in zip(fail_ids, fail_feedback)}
         for idx in self.eval_ids:
             self.scores[metric_name][idx] = 1 if idx in correct_ids else 0
         return metric_name, sum(self.scores[metric_name].values()) / len(self.results)
@@ -638,6 +650,8 @@ if __name__ == "__main__":
                              f"{DEFAULT_TOLERANCE_SINGLELINE} in --mode single and "
                              f"{DEFAULT_TOLERANCE_MULTILINE} in --mode multi.")
     parser.add_argument("--max_iter", type=int, default=1, help="Maximum number of add-bug iterations")
+    parser.add_argument("--n_workers", type=int, default=None,
+                        help="Parallel sandbox workers for handlers that support it (SWE-smith Docker runs)")
     parser.add_argument("--reload_first_round", action="store_true", help="Whether to reload first round results")
     parser.add_argument("--reload_result_file", type=str, default=1, help="The result file to reload")
     parser.add_argument("--reload_score_file", type=str, default=1, help="The score file to reload")
@@ -655,6 +669,8 @@ if __name__ == "__main__":
         args.eval_set_name = os.path.splitext(args.input_file[0])[0].split("_on_")[-1]
 
     evaluator = Evaluator(args)
+    if args.n_workers and hasattr(evaluator.handler, "n_workers"):
+        evaluator.handler.n_workers = args.n_workers
 
     for i, in_file in enumerate(args.input_file):
         rd = i + 1

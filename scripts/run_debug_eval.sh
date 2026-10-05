@@ -7,6 +7,11 @@
 #     single-hard  -> results/<ds>/bug_data/<ds>_pdb_single_hard.json
 #     multi        -> results/<ds>/bug_data/<ds>_pdb_multi.json
 #
+#   WITH_SWESMITH=1 bash scripts/run_debug_eval.sh multi
+#     also evaluates the SWE-smith part of PDB-Wild
+#     (results/swesmith/bug_data/swesmith_pdb_multi.json; needs Docker and
+#     `uv sync --extra swesmith`, see dataset/swesmith/README.md).
+#
 # Thinking models (temperature=1.0, max_tokens=32000):
 #   deepseek-reasoner, gemini-2.5-pro, gpt-5.1-codex,
 #   claude-sonnet-4-5-20250929, grok-code-fast-1,
@@ -87,6 +92,13 @@ NON_THINKING_MODELS=(
 )
 
 DATASETS=("bigcodebench" "livecodebench")
+if [[ "${WITH_SWESMITH:-0}" == "1" ]]; then
+  if [[ "$SUBSET" != "multi" ]]; then
+    echo "ERROR: SWE-smith is only part of the multi subset"
+    exit 2
+  fi
+  DATASETS+=("swesmith")
+fi
 
 # --- Multi subset requires --mode multi so tolerance defaults to 1 ---
 MODE_ARGS=()
@@ -154,7 +166,7 @@ echo "============================================"
 echo "=== Union Summary ($SUBSET) ==="
 echo "============================================"
 
-FILE_TAG="$FILE_TAG" MAX_ROUNDS="$MAX_ROUNDS" $PYTHON -c "
+DATASETS="${DATASETS[*]}" FILE_TAG="$FILE_TAG" MAX_ROUNDS="$MAX_ROUNDS" $PYTHON -c "
 import json, os, glob
 from collections import defaultdict
 
@@ -163,7 +175,7 @@ from collections import defaultdict
 # aggregates the FINAL round across datasets into a union-per-model table.
 file_tag = os.environ['FILE_TAG']
 final_round = int(os.environ['MAX_ROUNDS'])
-datasets = ['bigcodebench', 'livecodebench']
+datasets = os.environ['DATASETS'].split()
 union = defaultdict(lambda: [0.0, 0.0, 0.0, 0.0, 0])  # model -> sums + total n
 
 for dataset in datasets:

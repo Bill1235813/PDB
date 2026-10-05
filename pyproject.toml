@@ -17,12 +17,33 @@ dependencies = [
     "pandas>=2.2",
     "pyarrow>=18",
     "datasets>=4.2",
+    "httpx[socks]>=0.28.1",
 ]
 
 [project.optional-dependencies]
 # Agentic debugging via Claude Code CLI (optional — only needed for the agentic ablation).
 agentic = [
     "anthropic>=0.40",
+]
+# SWE-smith repository tasks: Docker-based validation through the vendored
+# dataset/swesmith/install/{SWE-smith,SWE-bench} sources (plus a running Docker daemon).
+swesmith = [
+    "docker>=7.1",
+    "ghapi",
+    "unidiff",
+    "python-dotenv",
+    "rich",
+    "modal",
+    "beautifulsoup4",
+    "chardet",
+    "tenacity",
+    "requests",
+    "jinja2",
+    "pyyaml",
+]
+# Test suite (python -m pytest tests).
+test = [
+    "pytest>=8",
 ]
 # Extra data-processing niceties for analysis notebooks.
 viz = [

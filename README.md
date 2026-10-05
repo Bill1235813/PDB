@@ -8,6 +8,7 @@
 **PDB** is an automatic pipeline that turns any coding dataset into a *debugging* benchmark with fine-grained metrics. Beyond binary unit-test scores, PDB evaluates a debugger with **edit-level precision** (did the model touch only the lines it had to?) and **bug-level recall** (did it fix every fault?). This rewards targeted fixes and penalizes the regeneration behavior frontier LLMs often fall back on.
 
 - Released datasets: [`PDB-Single`](https://huggingface.co/datasets/Precise-Debugging-Benchmarking/PDB-Single) · [`PDB-Single-Hard`](https://huggingface.co/datasets/Precise-Debugging-Benchmarking/PDB-Single-Hard) · [`PDB-Multi`](https://huggingface.co/datasets/Precise-Debugging-Benchmarking/PDB-Multi)
+- Repository-level bugs (PDB-Wild): 228 multi-line bugs in 6 SWE-smith repositories, [`results/swesmith/bug_data/swesmith_pdb_multi.json`](results/swesmith/bug_data/swesmith_pdb_multi.json) — see [dataset/swesmith/README.md](dataset/swesmith/README.md)
 
 > TL;DR — Frontier models like GPT-5.1-Codex and DeepSeek-V3.2-Thinking top unit-test leaderboards (>76%) but score at or below 45% on precision: they pass tests by rewriting, not repairing. PDB makes that gap measurable.
 
@@ -29,6 +30,12 @@ The LiveCodeBench and BigCodeBench sandboxes live in separate uv envs:
 ```bash
 cd dataset/bigcodebench/install   && uv sync --extra eval && cd -
 cd dataset/livecodebench/install  && uv sync              && cd -
+```
+
+SWE-smith tasks are validated in the repositories' Docker images; they need a running Docker daemon and one extra:
+
+```bash
+uv sync --extra swesmith
 ```
 
 ### API keys
@@ -103,6 +110,19 @@ The generator produces `oai_buggy_code_<timestamp>.json` under `results/<bench>/
 
 Both scripts preflight API keys against a cheap probe before spending credits, and they run all 6 (model × dataset) jobs concurrently.
 
+### Repository-level bugs (SWE-smith)
+
+[scripts/run_bug_gen_swesmith.sh](scripts/run_bug_gen_swesmith.sh) extracts files from 10 SWE-smith repository images and injects multi-line bugs of up to 30 lines (`--multi_validation span`, which also admits code-move bugs), validating each against the repository's full test suite in Docker. Details in [dataset/swesmith/README.md](dataset/swesmith/README.md).
+
+### Optional test-adequacy gate
+
+PDB keeps a bug only if the inherited tests detect it; whether every *test-passing patch* is correct depends on the upstream suite. [src/test_adequacy.py](src/test_adequacy.py) adds an optional gate to preprocessing:
+
+- **Coverage gate** (`--coverage_gate`): run the suite on the ground truth under a line tracer and exclude editable lines that no test executes from bug injection (each task records the verdict in `coverage`).
+- **Test augmentation** (`--augment_tests [--property_based]`): for tasks that fail the gate, an LLM writes extra tests for the unexecuted lines; only tests that pass on the ground truth in every repeated run are kept, and the handler runs them alongside the original suite during bug validation and scoring.
+
+The gate is implemented for `swesmith` (handler hooks `measure_line_coverage` / `run_tests_in_container`; see `dataset/base.py` to add it to other datasets).
+
 ### Choose your generator pool
 
 The default pool is GPT-5.1-Codex + Claude-4.5-Sonnet + Gemini-2.5-Pro. Swap the `MODELS` array in `run_bug_gen_*.sh` to taste — anything supported by LiteLLM works.
@@ -123,6 +143,10 @@ Implement a `DatasetHandler` subclass under `dataset/<your-dataset>/` and regist
 | `--max_lines_per_block` | 1 single / 4 multi | block size cap for diff validation |
 | `--temperature` | `1.0` | sampling temperature |
 | `--max_tokens` | `32000` | thinking-budget cap |
+| `--multi_validation` | `block` | `block`: one contiguous block per bug; `span`: all edits within `--max_lines_per_block` lines (SWE-smith) |
+| `--atomicity_full_max_lines` | `4` | bugs up to this many edited lines are checked against every partial repair, larger ones against single-line reverts |
+| `--n_workers_llm` / `--n_workers_validation` | `1` / `4` | parallel LLM calls / Docker validation workers |
+| `--coverage_gate`, `--augment_tests`, `--property_based` | off | optional test-adequacy gate (above) |
 
 ---
 
@@ -229,6 +253,14 @@ Final reproduction targets (union over BCB + LCB):
 | PDB-Single | 7,591 | 9 | Claude-Sonnet-4.5 | 	DeepSeek-V3.2-Thinking |
 | PDB-Single-Hard | 5,751 | 9 | Claude-Sonnet-4.5 | 	DeepSeek-V3.2-Thinking |
 | PDB-Multi | 256 | 9 | Claude-Sonnet-4.5 | 	DeepSeek-V3.2-Thinking |
+
+---
+
+## ✅ Tests
+
+```bash
+uv run --extra test python -m pytest tests     # no API calls, no Docker
+```
 
 ---
 

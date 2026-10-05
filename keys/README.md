@@ -12,6 +12,8 @@ The repository ships **placeholder files** (`YOUR_KEY_HERE`) for the providers u
 | `deepseek/` | `keys/deepseek_key.txt` |
 | `xai/` | `keys/xai_key.txt` |
 | `together_ai/` | `keys/together_key.txt` |
+| `openrouter/` | `keys/openrouter_key.txt` |
+| `vertex_ai/` | none — uses Google Application Default Credentials |
 
 Full mapping in [src/api_config.py](../src/api_config.py). To point at a different file for a single run, pass `--model_api_file <filename>` (relative to this directory).
 

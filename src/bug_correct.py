@@ -26,6 +26,8 @@ import argparse
 import copy
 import itertools
 import json
+import threading
+import time
 import dspy
 import tqdm
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -62,16 +64,20 @@ def _fix_one(item, debugger, args, rd):
             "pred_diff": file_diff(buggy_code, raw_output, cleaned=True)[2]
         }
     except Exception as e:
-        # NOTE: [edge case callout] on API/parse failure we still record an empty
-        # solution so the item counts as a (failed) attempt rather than vanishing,
-        # keeping round-over-round bookkeeping consistent.
-        log_entry["debug_results"] = {
-            "model": args.model_name,
-            "solution": "",
-            "pred_diff": file_diff(buggy_code, "", cleaned=True)[2]
-        }
+        # NOTE: [edge case callout] on API/parse failure we leave `debug_results`
+        # unset so bug_correct retries the item; items that exhaust their retries
+        # get an empty solution and count as a (failed) attempt.
         print(f"Error processing task_id {task_id}: {e}")
     return log_entry
+
+
+def _empty_result(item, args):
+    item["debug_results"] = {
+        "model": args.model_name,
+        "solution": "",
+        "pred_diff": file_diff(item.get("buggy_code", ""), "", cleaned=True)[2]
+    }
+    return item
 
 
 def bug_correct(data, debugger, output_file, args, rd):
@@ -82,25 +88,67 @@ def bug_correct(data, debugger, output_file, args, rd):
     dspy + litellm are thread-safe via the module-level settings; the
     evaluator stage still runs serially since it shells out to the dataset
     sandbox.
+
+    Finished items are appended to `output_file + ".ckpt.jsonl"`; an interrupted
+    run resumes from it. Items whose API call failed are retried up to
+    --max_api_retries times with exponential backoff.
     """
     if not data:
         print("No buggy data to correct; skipping correction phase.")
         return []
 
-    results = [None] * len(data)
+    ckpt_file = output_file + ".ckpt.jsonl"
+    done = {}
+    if os.path.exists(ckpt_file):
+        with open(ckpt_file) as f:
+            for line in f:
+                try:
+                    item = json.loads(line)
+                    done[item["task_id"]] = item
+                except (json.JSONDecodeError, KeyError):
+                    pass  # a line cut off by the interruption
+        print(f"Resuming from checkpoint: {len(done)}/{len(data)} items already done")
+
+    results = [done.get(item.get("task_id")) for item in data]
+    ckpt_lock = threading.Lock()
     n_workers = getattr(args, "n_workers", 1)
-    if n_workers <= 1:
-        for i, item in enumerate(tqdm.tqdm(data)):
-            results[i] = _fix_one(item, debugger, args, rd)
-    else:
-        with ThreadPoolExecutor(max_workers=n_workers) as pool:
-            futures = {pool.submit(_fix_one, item, debugger, args, rd): i
-                       for i, item in enumerate(data)}
-            for fut in tqdm.tqdm(as_completed(futures), total=len(futures)):
-                results[futures[fut]] = fut.result()
+
+    def _run(indices, items):
+        def _finish(i, entry):
+            results[i] = entry
+            if "debug_results" in entry:
+                with ckpt_lock, open(ckpt_file, "a") as f:
+                    f.write(json.dumps(entry) + "\n")
+
+        if n_workers <= 1:
+            for i in tqdm.tqdm(indices):
+                _finish(i, _fix_one(items[i], debugger, args, rd))
+        else:
+            with ThreadPoolExecutor(max_workers=n_workers) as pool:
+                futures = {pool.submit(_fix_one, items[i], debugger, args, rd): i for i in indices}
+                for fut in tqdm.tqdm(as_completed(futures), total=len(futures)):
+                    _finish(futures[fut], fut.result())
+
+    _run([i for i, r in enumerate(results) if r is None], data)
+
+    max_api_retries = getattr(args, "max_api_retries", 3)
+    failed = [i for i, r in enumerate(results) if "debug_results" not in r]
+    for attempt in range(1, max_api_retries + 1):
+        if not failed:
+            break
+        wait = 30 * (2 ** (attempt - 1))  # 30s, 60s, 120s
+        print(f"API retry {attempt}/{max_api_retries}: {len(failed)} items failed, retrying in {wait}s...")
+        time.sleep(wait)
+        _run(failed, results)
+        failed = [i for i in failed if "debug_results" not in results[i]]
+    for i in failed:
+        print(f"Permanently failed after {max_api_retries} retries: {results[i].get('task_id')}")
+        _empty_result(results[i], args)
 
     with open(output_file, "w") as f:
         json.dump(results, f, indent=2)
+    if os.path.exists(ckpt_file):
+        os.remove(ckpt_file)
 
     return results
 
@@ -135,7 +183,9 @@ def eval_main(args):
 
     # Load the model
     assert args.use_claude_code or args.model_name
-    if args.use_claude_code:
+    if args.skip_generation:
+        debugger = None
+    elif args.use_claude_code:
         print("Using Claude Code autonomous agent mode")
         from claude_code_wrapper import ClaudeCodeGenerator
         generator_cor = ClaudeCodeGenerator(
@@ -151,13 +201,17 @@ def eval_main(args):
             generator_cor = dspy.LM(args.model_name, api_key=api_key, api_base='https://api.together.xyz/v1',
                                     temperature=args.temperature, max_tokens=args.max_tokens, num_retries=3)
         else:
-            generator_cor = dspy.LM(args.model_name, api_key=api_key, temperature=args.temperature,
-                                    max_tokens=args.max_tokens, num_retries=3)
+            lm_kwargs = dict(temperature=args.temperature, max_tokens=args.max_tokens, num_retries=3)
+            if api_key is not None:  # None means ambient credentials (e.g. vertex_ai/ ADC)
+                lm_kwargs["api_key"] = api_key
+            if args.reasoning_effort:
+                lm_kwargs["reasoning_effort"] = args.reasoning_effort
+            generator_cor = dspy.LM(args.model_name, **lm_kwargs)
         dspy.settings.configure(lm=generator_cor)
         debugger = Debugger()
 
     # Dry-run: replace the LM with a mock so no API credit is consumed
-    if getattr(args, 'dry_run', False):
+    if getattr(args, 'dry_run', False) and not args.skip_generation:
         from unittest.mock import MagicMock
         mock_lm = MagicMock()
         mock_lm.return_value = ["```python\n# mock dry-run response\npass\n```"]
@@ -170,7 +224,7 @@ def eval_main(args):
     if not args.eval_model_name:
         args.eval_model_name = args.model_name.split("/")[-1] if args.model_name else "claude_code"
     if not args.eval_set_name:
-        args.eval_set_name = os.path.splitext(args.input_file)[0]
+        args.eval_set_name = os.path.splitext(args.input_file[0])[0]
     evaluator = Evaluator(args)
 
     print(f"Enter debugging process")
@@ -188,7 +242,7 @@ def eval_main(args):
             for item in results:
                 if item["task_id"] in buggy_dict:
                     if args.use_tests or args.use_claude_code:
-                        item["test"] = buggy_dict[d["task_id"]]["test"]
+                        item["test"] = buggy_dict[item["task_id"]]["test"]
                     filtered_results.append(item)
             results = filtered_results
             scores = {metric: {task_id: v for task_id, v in metric_dict.items() if task_id in buggy_dict} for
@@ -200,7 +254,14 @@ def eval_main(args):
         else:
             # Run debugging process
             output_file = os.path.join(output_dir, output_prefix) + f"_on_{args.eval_set_name}_round_{rd}.json"
-            results = bug_correct(buggy_data, debugger, output_file, args, rd)
+            if args.skip_generation:
+                # Re-score saved outputs (e.g. after fixing a sandbox issue) without API calls.
+                if not os.path.exists(output_file):
+                    raise FileNotFoundError(f"--skip_generation: no saved results at {output_file}")
+                results = json.load(open(output_file))
+                print(f"Loaded {len(results)} saved results from {output_file}")
+            else:
+                results = bug_correct(buggy_data, debugger, output_file, args, rd)
 
             # Run evaluation and save outputs
             if not args.no_eval:
@@ -275,6 +336,13 @@ if __name__ == "__main__":
 
     # Claude Code specific arguments
     parser.add_argument("--use_claude_code", action="store_true", help="Use Claude Code agent")
+    parser.add_argument("--reasoning_effort", type=str, default=None,
+                        choices=["low", "medium", "high", "xhigh", "max"],
+                        help="Reasoning effort for models that support it (ignored otherwise)")
+    parser.add_argument("--max_api_retries", type=int, default=3,
+                        help="Retries (with exponential backoff) for items whose API call failed")
+    parser.add_argument("--skip_generation", action="store_true",
+                        help="Do not query the model; re-evaluate the saved results of a previous run")
 
     # Testing
     parser.add_argument("--dry_run", action="store_true",

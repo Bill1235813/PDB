@@ -258,12 +258,28 @@ def apply_diff(original_code, diff, with_delta=False):
     return mod_code
 
 
-def parse_diff_to_blocks(diffs, ordered=True):
+# NOTE: [design thought] file_diff represents a code move as Add(N) next to a
+# Delete/Modify at N-1. SWE-smith's multi-line bugs contain such moves and are
+# parsed with them merged into one block; BigCodeBench/LiveCodeBench keep the
+# original rule so released PDB-Single/Multi scores are reproduced exactly.
+# Entry points call set_block_merge_mode(handler.merge_adjacent_add_blocks).
+MERGE_ADJACENT_ADD = False
+
+
+def set_block_merge_mode(merge_adjacent_add):
+    """Set the process-wide default for parse_diff_to_blocks(merge_adjacent_add=None)."""
+    global MERGE_ADJACENT_ADD
+    MERGE_ADJACENT_ADD = bool(merge_adjacent_add)
+
+
+def parse_diff_to_blocks(diffs, ordered=True, merge_adjacent_add=None):
     """
     Parse diffs into edit blocks, merging consecutive edits into one block of edits.
 
     :param diffs: the diff in format {"line_number": ("type": xxx, "original": xxx, "modified": xxx)}
     :param ordered: the diff is sorted by line number or not
+    :param merge_adjacent_add: also merge Add(N) adjacent to Delete/Modify(N-1);
+        None uses the module default (see set_block_merge_mode)
     :return: a list of block diffs in order, each element in format {
         "block_start": start line number,
         "block_end": end line number,
@@ -276,6 +292,8 @@ def parse_diff_to_blocks(diffs, ordered=True):
     else:
         orig_diffs = list(diffs.items())
 
+    if merge_adjacent_add is None:
+        merge_adjacent_add = MERGE_ADJACENT_ADD
     set_del_mod = {"Delete", "Modify"}
     set_add = {"Add"}
     current_block = []
@@ -290,7 +308,8 @@ def parse_diff_to_blocks(diffs, ordered=True):
         if prev_tp is not None:
             if tp in set_del_mod and line_no == prev_line_no - 1:
                 consecutive = True
-            elif tp in set_add and line_no == prev_line_no:
+            elif tp in set_add and (line_no == prev_line_no
+                                    or (merge_adjacent_add and line_no == prev_line_no - 1)):
                 consecutive = True
             else:
                 consecutive = False
@@ -404,6 +423,31 @@ def verify_block_single_diff(diff, block_count=-1, stride=0):
     Verify each block has only a single line diff. Original single-line version.
     """
     return verify_block_diff(diff, block_count=block_count, stride=stride, max_lines_per_block=1)
+
+
+def verify_span_diff(diff, max_span=30, min_changes=2, max_changes=30):
+    """
+    Span-based validation for multi-line bugs: all changed lines lie within a
+    max_span-line window and the number of changed entries is within
+    [min_changes, max_changes].
+
+    Unlike verify_block_diff, this accepts non-contiguous edits inside the span,
+    which is how file_diff represents code-reorder bugs (Add + Delete nearby).
+
+    :return: (passed, reason_string)
+    """
+    if not diff:
+        return False, "Empty diff."
+    line_nos = [int(str(k).strip()) for k in diff.keys()]
+    span = max(line_nos) - min(line_nos) + 1
+    total = len(diff)
+    if span > max_span:
+        return False, f"Span {span} exceeds max_span {max_span}."
+    if total < min_changes:
+        return False, f"Total changes {total} < min_changes {min_changes}."
+    if total > max_changes:
+        return False, f"Total changes {total} > max_changes {max_changes}."
+    return True, ""
 
 
 if __name__ == "__main__":

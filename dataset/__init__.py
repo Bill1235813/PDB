@@ -9,11 +9,13 @@ one dict entry — see dataset/README.md for full instructions.
 
 from dataset.bigcodebench.handler import BigCodeBenchHandler
 from dataset.livecodebench.handler import LiveCodeBenchHandler
+from dataset.swesmith.handler import SWESmithHandler
 from dataset.base import DatasetHandler
 
 _REGISTRY = {
     "bigcodebench": BigCodeBenchHandler(),
     "livecodebench": LiveCodeBenchHandler(),
+    "swesmith": SWESmithHandler(),
 }
 
 

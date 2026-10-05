@@ -38,6 +38,17 @@ class DatasetHandler(ABC):
     # self-contained uv install tree. Subclasses can override if needed.
     install_subdir: ClassVar[str] = "install"
 
+    # Whether parse_diff_to_blocks merges Add(N) into an adjacent Delete/Modify(N-1)
+    # block (see utils.set_block_merge_mode). Off for the original PDB datasets.
+    merge_adjacent_add_blocks: ClassVar[bool] = False
+
+    # Optional hooks for the coverage gate / test augmentation (src/test_adequacy.py).
+    # Handlers that support them implement:
+    #   measure_line_coverage(tasks, extra_tests=None, extra_setup="") -> {task_id: {"hit_lines": [...]}}
+    #   run_tests_in_container(repo, files, test_ids, extra_setup="") -> {test_id: status}
+    #   augmented_test_path(task, index) -> str ; module_name(task) -> str
+    # and run a task's `augmented_test_ids` during verify_unit_test.
+
     @property
     def install_dir(self) -> Path:
         """Absolute path to this dataset's uv install directory."""
@@ -148,9 +159,12 @@ class DatasetHandler(ABC):
         ...
 
     @abstractmethod
-    def verify_unit_test(self, verify_file, gt_file=None, timeout_per_task=20, timeout=1800):
+    def verify_unit_test(self, verify_file, gt_file=None, timeout_per_task=20, timeout=1800, n_workers=None):
         """
         Run unit tests using this dataset's evaluation harness.
+
+        n_workers is a parallelism hint; handlers whose harness manages its own
+        parallelism may ignore it.
 
         Returns:
             (fail_ids, correct_ids, fail_feedback):

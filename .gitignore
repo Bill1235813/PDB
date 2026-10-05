@@ -51,3 +51,5 @@ wheels/
 results/*/*/log
 dataset/*/data/log
 bash_log/
+# SWE-smith validation logs (written relative to the working directory)
+logs/
