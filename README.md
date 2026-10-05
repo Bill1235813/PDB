@@ -269,7 +269,7 @@ uv run --extra test python -m pytest tests     # no API calls, no Docker
 ```
 @article{zhu2026pdb,
   title={Precise Debugging Benchmark: Is Your Model Debugging or Regenerating?},
-  author={Zhu, Wang Bill and Chai, Miaosen and Wang, Shangshang and Liu, Yejia and Bian, Song and Dong, Honghua and Neiswanger, Willie and Jia, Robin},
+  author={Chai, Miaosen and Zhu, Wang Bill and Wang, Shangshang and Liu, Yejia and Bian, Song and Dong, Honghua and Neiswanger, Willie and Jia, Robin},
   journal={arXiv preprint arXiv:2604.17338},
   year={2026}
 }
