@@ -1,18 +1,50 @@
-# PDB: Precise Debugging Benchmarking
+<p align="center">
+  <img src="assets/banner.png" alt="PDB: Precise Debugging Benchmark" width="100%">
+</p>
 
-⭐ **Accepted by NeurIPS 2026 Evaluations and Datasets**
+<p align="center">
+  <a href="https://neurips.cc/"><img src="https://precise-debugging-benchmark.github.io/images/badge-neurips26.svg" alt="NeurIPS'26 Evaluations & Datasets" height="28"></a>
+  <a href="https://arxiv.org/abs/2604.17338"><img src="https://img.shields.io/badge/arXiv-Paper-b31b1b.svg?style=for-the-badge&logo=arxiv&logoColor=white" alt="arXiv" height="28"></a>
+  <a href="https://precise-debugging-benchmark.github.io/"><img src="https://img.shields.io/badge/Project-Page-1f6feb.svg?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Project page" height="28"></a>
+  <a href="https://huggingface.co/Precise-Debugging-Benchmarking"><img src="https://img.shields.io/badge/huggingface-%F0%9F%A4%97_Datasets-yellow.svg?style=for-the-badge" alt="Hugging Face datasets" height="28"></a>
+</p>
 
-📄 [Paper](https://arxiv.org/abs/2604.17338) &nbsp;·&nbsp;
-🌐 [Project page](https://precise-debugging-benchmark.github.io/) &nbsp;·&nbsp;
-🤗 [Datasets](https://huggingface.co/Precise-Debugging-Benchmarking) &nbsp;·&nbsp;
-🏆 [Leaderboard](https://precise-debugging-benchmark.github.io/leaderboard.html)
+<p align="center">
+  <img src="https://img.shields.io/badge/python-3.10%2B-3776ab?logo=python&logoColor=white" alt="Python 3.10+">
+  <img src="https://img.shields.io/badge/env-uv-de5fe9" alt="uv">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT license"></a>
+</p>
 
-**PDB** is an automatic pipeline that turns any coding dataset into a *debugging* benchmark with fine-grained metrics. Beyond binary unit-test scores, PDB evaluates a debugger with **edit-level precision** (did the model touch only the lines it had to?) and **bug-level recall** (did it fix every fault?). This rewards targeted fixes and penalizes the regeneration behavior frontier LLMs often fall back on.
+<p align="center">
+  <a href="#-installation">Installation</a> ·
+  <a href="#-evaluate-a-model-on-pdb-single--single-hard--multi">Evaluate</a> ·
+  <a href="#-score-an-existing-debug-results-file">Score</a> ·
+  <a href="#-generate-your-own-pdb-test-set">Generate</a> ·
+  <a href="#-iterative-or-agentic-debugging">Agentic</a> ·
+  <a href="#-reproduce-experiments">Reproduce</a> ·
+  <a href="#-citation">Citation</a> ·
+  <a href="https://precise-debugging-benchmark.github.io/leaderboard.html">🏆 Leaderboard</a>
+</p>
+
+---
+
+**PDB** is an automatic pipeline that turns any coding dataset into a *debugging* benchmark with fine-grained metrics. Beyond binary unit-test scores, PDB evaluates a debugger with:
+
+| metric | question it answers |
+|---|---|
+| 🎯 **Edit-level precision** | Did the model touch only the lines it had to? |
+| 🧩 **Bug-level recall** | Did it fix every fault? |
+| ✅ **Unit score** | Does the patched program pass the tests? |
+
+This rewards targeted fixes and penalizes the regeneration behavior frontier LLMs often fall back on.
+
+> [!NOTE]
+> **TL;DR** — Frontier models like GPT-5.1-Codex and DeepSeek-V3.2-Thinking top unit-test leaderboards (>76%) but score at or below 45% on precision: they pass tests by rewriting, not repairing. PDB makes that gap measurable.
+
+### 📚 Releases
 
 - Released datasets: [`PDB-Single`](https://huggingface.co/datasets/Precise-Debugging-Benchmarking/PDB-Single) · [`PDB-Single-Full`](https://huggingface.co/datasets/Precise-Debugging-Benchmarking/PDB-Single-Full) · [`PDB-Wild`](https://huggingface.co/datasets/Precise-Debugging-Benchmarking/PDB-Wild) (BigCodeBench/LiveCodeBench part: [`PDB-Multi`](https://huggingface.co/datasets/Precise-Debugging-Benchmarking/PDB-Multi)) · model outputs and scores: [`PDB-Results`](https://huggingface.co/datasets/Precise-Debugging-Benchmarking/PDB-Results)
 - Repository-level bugs (PDB-Wild): 228 multi-line bugs in 6 SWE-smith repositories, [`results/swesmith/bug_data/swesmith_pdb_multi.json`](results/swesmith/bug_data/swesmith_pdb_multi.json) — see [dataset/swesmith/README.md](dataset/swesmith/README.md)
-
-> TL;DR — Frontier models like GPT-5.1-Codex and DeepSeek-V3.2-Thinking top unit-test leaderboards (>76%) but score at or below 45% on precision: they pass tests by rewriting, not repairing. PDB makes that gap measurable.
 
 ---
 
@@ -156,7 +188,7 @@ Implement a `DatasetHandler` subclass under `dataset/<your-dataset>/` and regist
 
 All three flavors below start from an already-scored round-1 single-pass run (produced by `scripts/run_debug_eval.sh` or `simple_debug_eval.sh`) and reload it with `--reload_first_round`, so only rounds 2+ consume fresh API credits.
 
-### 5.1 Iterative (text-only feedback)
+### Iterative (text-only feedback)
 
 The debugger sees its prior failed patches appended to `failed_attempts`, and the template auto-switches to `*_with_feedback` between rounds. No unit-test content or error traces are exposed.
 
@@ -173,7 +205,7 @@ python src/bug_correct.py \
   --temperature 1.0 --max_tokens 32000
 ```
 
-### 5.2 Agentic (tests + error messages exposed)
+### Agentic (tests + error messages exposed)
 
 Same as iterative, but `--use_tests` puts the hidden unit tests into the prompt and `--error_msg` injects the sandbox's stdout/stderr for every failing attempt:
 
@@ -191,7 +223,7 @@ python src/bug_correct.py \
   --temperature 1.0 --max_tokens 32000
 ```
 
-### 5.3 Agentic with Claude Code (tool-using subagent)
+### Agentic with Claude Code (tool-using subagent)
 
 Swaps the single-pass dspy LM for an autonomous [Claude Code](https://claude.com/claude-code) subagent that can read the buggy code, execute tests, and iteratively patch. Routed through [src/claude_code_wrapper.py](src/claude_code_wrapper.py).
 
@@ -252,9 +284,9 @@ Final reproduction targets (union over BCB + LCB):
 
 | subset | n | models evaluated | top precision model | top unit-score model |
 |---|---|---|---|---|
-| PDB-Single-Full | 7,589 | 9 | Claude-Sonnet-4.5 | 	DeepSeek-V3.2-Thinking |
-| PDB-Single | 5,751 | 9 | Claude-Sonnet-4.5 | 	DeepSeek-V3.2-Thinking |
-| PDB-Multi | 256 | 9 | Claude-Sonnet-4.5 | 	DeepSeek-V3.2-Thinking |
+| PDB-Single-Full | 7,589 | 9 | Claude-Sonnet-4.5 | DeepSeek-V3.2-Thinking |
+| PDB-Single | 5,751 | 9 | Claude-Sonnet-4.5 | DeepSeek-V3.2-Thinking |
+| PDB-Multi | 256 | 9 | Claude-Sonnet-4.5 | DeepSeek-V3.2-Thinking |
 
 ---
 
@@ -266,9 +298,9 @@ uv run --extra test python -m pytest tests     # no API calls, no Docker
 
 ---
 
-## Citation
+## 📝 Citation
 
-```
+```bibtex
 @article{chai2026pdb,
   title={Precise Debugging Benchmark: Is Your Model Debugging or Regenerating?},
   author={Chai, Miaosen and Zhu, Wang Bill and Wang, Shangshang and Liu, Yejia and Bian, Song and Dong, Honghua and Neiswanger, Willie and Jia, Robin},
