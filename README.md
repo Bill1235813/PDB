@@ -43,6 +43,7 @@ This rewards targeted fixes and penalizes the regeneration behavior frontier LLM
 
 ### 📚 Releases
 
+- 🆕 We are releasing a new follow-up work, [**PreciseCoder**](https://precise-coder-rl.github.io/), which uses PDB to train coding models with precision-aware RL rewards for faithful debugging.
 - Released datasets: [`PDB-Single`](https://huggingface.co/datasets/Precise-Debugging-Benchmarking/PDB-Single) · [`PDB-Single-Full`](https://huggingface.co/datasets/Precise-Debugging-Benchmarking/PDB-Single-Full) · [`PDB-Wild`](https://huggingface.co/datasets/Precise-Debugging-Benchmarking/PDB-Wild) (BigCodeBench/LiveCodeBench part: [`PDB-Multi`](https://huggingface.co/datasets/Precise-Debugging-Benchmarking/PDB-Multi)) · model outputs and scores: [`PDB-Results`](https://huggingface.co/datasets/Precise-Debugging-Benchmarking/PDB-Results)
 - Repository-level bugs (PDB-Wild): 228 multi-line bugs in 6 SWE-smith repositories, [`results/swesmith/bug_data/swesmith_pdb_multi.json`](results/swesmith/bug_data/swesmith_pdb_multi.json) — see [dataset/swesmith/README.md](dataset/swesmith/README.md)
 
